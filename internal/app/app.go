@@ -3,12 +3,15 @@ package app
 import (
 	"context"
 	"errors"
+	"fmt"
+
+	projectfs "github.com/tosdan/env-setup-wizard/internal/filesystem"
 )
 
 // ErrCanceled reports a user cancellation rather than an operational failure.
 var ErrCanceled = errors.New("operation canceled")
 
-var errNotImplemented = errors.New("wizard implementation not available yet")
+var errNotImplemented = errors.New("template processing not available yet")
 
 // Options contains the fully resolved command inputs for one workflow run.
 type Options struct {
@@ -22,6 +25,14 @@ type Options struct {
 // The implementation will be added incrementally during Phase 1. Keeping this
 // interface stable lets the command remain limited to argument parsing, path
 // resolution, and exit-code mapping.
-func Run(context.Context, Options) error {
+func Run(ctx context.Context, options Options) error {
+	if err := ctx.Err(); err != nil {
+		return err
+	}
+
+	if err := projectfs.Preflight(options.TemplatePath, options.OutputPath); err != nil {
+		return fmt.Errorf("preflight paths: %w", err)
+	}
+
 	return errNotImplemented
 }
