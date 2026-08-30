@@ -8,13 +8,16 @@ Env Setup Wizard keeps runtime dependencies few and places them behind internal 
 
 ## Direct runtime dependencies
 
-| Module | Version at Phase 0 | Role | License | Isolation |
+| Module | Current version | Role | License | Isolation |
 | --- | --- | --- | --- | --- |
 | `charm.land/huh/v2` | `v2.0.3` | Interactive terminal wizard | MIT | `internal/wizard` adapter |
 | `github.com/compose-spec/compose-go/v2` | `v2.14.0` | Compose-compatible dotenv semantics | Apache-2.0 | `internal/dotenv` adapter |
 | `github.com/charmbracelet/x/term` | `v0.2.2` | Cross-platform TTY detection | MIT | `internal/app` runtime setup |
+| `golang.org/x/sys` | `v0.42.0` | Windows `MoveFileExW` replacement | BSD-3-Clause | Build-tagged `internal/filesystem` adapter |
 
-`golang.org/x/sys` is currently present only as a transitive dependency of Huh. It will not become a direct dependency until the Windows replacement adapter actually needs `golang.org/x/sys/windows`; appearing in the design is not sufficient reason to promote it.
+`golang.org/x/sys` became a direct dependency in Phase 8 when the Windows
+replacement adapter began calling `MoveFileExW`. Non-Windows builds exclude that
+adapter through build tags.
 
 ## Admission rules
 
@@ -26,6 +29,7 @@ Apache-2.0, MIT, BSD-2-Clause, BSD-3-Clause, and ISC are accepted automatically.
 
 - Huh and compose-go provide substantial behavior at narrow seams and are accepted.
 - `x/term` was promoted from Huh's transitive dependencies when the workflow began enforcing its explicit cross-platform TTY preflight; it avoids duplicating platform-specific terminal detection.
+- `x/sys/windows` was promoted when the safe writer required the native Windows replacement primitive; the dependency remains isolated behind `replaceFile`.
 - No generic validation framework, CLI framework, or logging dependency is accepted for v1.
 - No exception to the license policy is currently required.
 
