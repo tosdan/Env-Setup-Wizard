@@ -38,8 +38,28 @@ func TestRunReachesNextPipelineStageAfterSuccessfulPreflight(t *testing.T) {
 		OutputPath:   filepath.Join(root, ".env"),
 	})
 
-	if err == nil || err.Error() != "template processing not available yet" {
+	if err == nil || err.Error() != "structural scanning not available yet" {
 		t.Fatalf("Run() error = %v, want next-stage placeholder", err)
+	}
+}
+
+func TestRunLoadsTemplateBeforeNextPipelineStage(t *testing.T) {
+	root := t.TempDir()
+	templatePath := filepath.Join(root, ".env.example")
+	if err := os.WriteFile(templatePath, []byte{0xff, 'K'}, 0o600); err != nil {
+		t.Fatalf("WriteFile(%q): %v", templatePath, err)
+	}
+
+	err := app.Run(context.Background(), app.Options{
+		TemplatePath: templatePath,
+		OutputPath:   filepath.Join(root, ".env"),
+	})
+
+	if err == nil {
+		t.Fatal("Run() error = nil, want template decoding error")
+	}
+	if !strings.Contains(err.Error(), "load template: decode template") {
+		t.Fatalf("Run() error = %q, want contextual template decoding error", err)
 	}
 }
 
