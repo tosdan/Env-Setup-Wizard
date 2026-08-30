@@ -201,6 +201,48 @@ func TestParseTemplateValidatesBooleanTemplateValuesWithoutLeakingThem(t *testin
 	}
 }
 
+func TestParseTemplateValidatesTypedTemplateValues(t *testing.T) {
+	valid := strings.Join([]string{
+		"# @type int",
+		"INTEGER=+00042",
+		"# @type int",
+		"EMPTY_INTEGER=",
+		"# @type port",
+		"PORT=00080",
+		"# @type port",
+		"EMPTY_PORT=",
+		"# @type url",
+		"URL=unix:///var/run/app.sock",
+		"# @type url",
+		"EMPTY_URL=",
+	}, "\n")
+	document, err := dotenv.ParseTemplate(writeTemplate(t, []byte(valid)))
+	if err != nil {
+		t.Fatalf("ParseTemplate() error = %v, want nil", err)
+	}
+	variables := documentVariables(document)
+	if variables["INTEGER"].Value != "+00042" || variables["PORT"].Value != "00080" || variables["URL"].Value != "unix:///var/run/app.sock" {
+		t.Errorf("typed values were normalized unexpectedly: %#v", variables)
+	}
+
+	invalid := []struct {
+		name        string
+		input       string
+		wantMessage string
+	}{
+		{name: "integer syntax", input: "# @type int\nVALUE=1.5\n", wantMessage: "decimal integer"},
+		{name: "integer overflow", input: "# @type int\nVALUE=9223372036854775808\n", wantMessage: "signed 64-bit"},
+		{name: "port range", input: "# @type port\nVALUE=65536\n", wantMessage: "range 1..65535"},
+		{name: "relative URL", input: "# @type url\nVALUE=example.com/path\n", wantMessage: "absolute URI"},
+	}
+	for _, tt := range invalid {
+		t.Run(tt.name, func(t *testing.T) {
+			_, err := dotenv.ParseTemplate(writeTemplate(t, []byte(tt.input)))
+			requireAnnotationError(t, err, tt.wantMessage)
+		})
+	}
+}
+
 func TestParseTemplateRejectsEmptyFixedRequiredValue(t *testing.T) {
 	input := "# @required\n# @fixed\nKEY='   '\n"
 	_, err := dotenv.ParseTemplate(writeTemplate(t, []byte(input)))

@@ -7,12 +7,13 @@ import (
 
 	"github.com/tosdan/env-setup-wizard/internal/dotenv"
 	projectfs "github.com/tosdan/env-setup-wizard/internal/filesystem"
+	"github.com/tosdan/env-setup-wizard/internal/wizard"
 )
 
 // ErrCanceled reports a user cancellation rather than an operational failure.
 var ErrCanceled = errors.New("operation canceled")
 
-var errNotImplemented = errors.New("validation and question model not available yet")
+var errNotImplemented = errors.New("interactive wizard not available yet")
 
 // Options contains the fully resolved command inputs for one workflow run.
 type Options struct {
@@ -37,6 +38,9 @@ func Run(ctx context.Context, options Options) error {
 	document, err := dotenv.ParseTemplate(options.TemplatePath)
 	if err != nil {
 		return fmt.Errorf("parse template: %w", err)
+	}
+	if _, err := wizard.BuildQuestionGroups(document); err != nil {
+		return fmt.Errorf("build questions: %w", err)
 	}
 	if _, err := projectfs.RenderConfiguration(document); err != nil {
 		return fmt.Errorf("render configuration: %w", err)

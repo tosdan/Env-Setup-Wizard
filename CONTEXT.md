@@ -44,6 +44,18 @@ _Avoid_: Document section, reordered block
 A configurable interaction derived from a Variable and its annotations.
 _Avoid_: Variable, field
 
+**Question kind**:
+The interaction shape of a Question: textual input, boolean confirmation, or closed selection. It is distinct from the Variable type being validated.
+_Avoid_: Variable type, Huh widget
+
+**Question group**:
+The logical collection of configurable Questions sharing a Section name. Repeated Section occurrences contribute to one group while Questions retain Document order.
+_Avoid_: Document block, page
+
+**Existing-value issue**:
+A presentation-safe diagnostic explaining that a value from Existing configuration cannot initialize its Question. It never reveals a secret value or its length.
+_Avoid_: Validation error, raw existing value
+
 **Existing configuration**:
 An optional current `.env` used only as a source of values when the wizard is run again.
 _Avoid_: Template, source of truth

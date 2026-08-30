@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	"github.com/tosdan/env-setup-wizard/internal/domain"
+	"github.com/tosdan/env-setup-wizard/internal/validation"
 )
 
 const implicitSection = "Configuration"
@@ -272,16 +273,6 @@ func validateVariableAnnotations(variable domain.Variable, lines map[domain.Anno
 		}
 	}
 
-	if annotations.Type == domain.VariableTypeBool {
-		if variable.Value == "" || (!strings.EqualFold(variable.Value, "true") && !strings.EqualFold(variable.Value, "false")) {
-			return fmt.Errorf(
-				"line %d: template value for @type bool variable %q must be true or false",
-				variable.Line,
-				variable.Key,
-			)
-		}
-	}
-
 	if annotations.Fixed && annotations.Required && strings.TrimSpace(variable.Value) == "" {
 		return fmt.Errorf(
 			"line %d: fixed required variable %q must have a nonempty template value",
@@ -290,7 +281,34 @@ func validateVariableAnnotations(variable domain.Variable, lines map[domain.Anno
 		)
 	}
 
+	if err := validateTypedTemplateValue(annotations.Type, variable.Value); err != nil {
+		return fmt.Errorf(
+			"line %d: template value for @type %s variable %q: %w",
+			variable.Line,
+			annotations.Type,
+			variable.Key,
+			err,
+		)
+	}
+
 	return nil
+}
+
+func validateTypedTemplateValue(variableType domain.VariableType, value string) error {
+	switch variableType {
+	case domain.VariableTypeString:
+		return validation.String(value)
+	case domain.VariableTypeInt:
+		return validation.Integer(value)
+	case domain.VariableTypeBool:
+		return validation.Boolean(value)
+	case domain.VariableTypePort:
+		return validation.Port(value)
+	case domain.VariableTypeURL:
+		return validation.URL(value)
+	default:
+		return fmt.Errorf("unsupported variable type")
+	}
 }
 
 func containsOption(options []string, value string) bool {

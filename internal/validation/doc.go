@@ -1,2 +1,3 @@
-// Package validation contains pure validators used by the domain and wizard.
+// Package validation contains pure validators used while loading configuration
+// and collecting wizard answers.
 package validation
