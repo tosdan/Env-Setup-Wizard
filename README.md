@@ -161,6 +161,10 @@ Annotations are removed from the generated `.env`. Normal comments, blank
 lines, variable order, consistent LF/CRLF style, and final-newline state come
 from the template.
 
+Runnable templates covering every v1 annotation are available in
+[`examples/`](examples/README.md), with commands for keeping manual-test output
+inside the ignored `.tmp` directory.
+
 ## Annotation reference
 
 Annotations are comment lines in the form `# @name value`.
