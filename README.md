@@ -183,7 +183,11 @@ go run ./cmd/env-wizard --version
 ```
 
 Local builds report `env-wizard dev`. Release builds inject the semantic version
-and short commit without embedding a build timestamp.
+and short commit without embedding a build timestamp. The release artifact
+workflow builds and smoke-tests each supported target natively, checks archive
+names and contents, and emits a verified `SHA256SUMS`; it does not yet publish a
+GitHub Release. See [`CONTRIBUTING.md`](CONTRIBUTING.md) for the local dry-run
+commands.
 
 ## Project documents
 

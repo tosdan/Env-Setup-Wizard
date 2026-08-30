@@ -124,5 +124,32 @@ Keep commits coherent and messages outcome-oriented. Generated release archives
 and local binaries do not belong in a pull request. `THIRD_PARTY_NOTICES` is the
 exception when it was intentionally regenerated after a dependency change.
 
+## Release artifact dry run
+
+The release workflow can be started manually with a Semantic Versioning value
+such as `v1.0.0-rc.1`. It uses the latest Go 1.27 patch on native runners for
+all five targets, injects the version and short commit, runs each binary with
+`--version`, and verifies the canonical archive before uploading it. macOS
+artifacts remain preview even after these automated native checks.
+
+To exercise the same process on the current native platform, use a real commit
+from the checkout and one of `windows-amd64`, `linux-amd64`, `linux-arm64`,
+`darwin-amd64`, or `darwin-arm64`:
+
+```text
+go run ./internal/tools/release build -version v1.0.0-rc.1 -commit abc1234 -target windows-amd64 -output dist
+```
+
+After all five canonical archives have been collected in `dist`, verify their
+contents and generate the sorted checksum manifest with:
+
+```text
+go run ./internal/tools/release finalize -version v1.0.0-rc.1 -input dist -output dist
+```
+
+The artifact workflow intentionally does not create a GitHub Release. Publishing
+is a separate release operation so a manually dispatched dry run cannot publish
+by accident.
+
 By contributing, you agree that your contribution is licensed under the
 repository's [Apache License 2.0](LICENSE).

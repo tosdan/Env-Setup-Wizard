@@ -5,3 +5,4 @@
 /env-wizard.exe
 /coverage.out
 /.tmp/
+/dist/
