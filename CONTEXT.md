@@ -16,6 +16,18 @@ _Avoid_: Configuration map, parsed map
 A named dotenv assignment in the Document. A Variable is configuration data, not an interaction shown to the user.
 _Avoid_: Field, question
 
+**Raw value**:
+The exact dotenv text written after a Variable's assignment delimiter, including any quoting and escaping.
+_Avoid_: Resolved value
+
+**Resolved value**:
+The single-line configuration content represented by a Raw value after applying dotenv semantics. An empty Resolved value still exists.
+_Avoid_: Raw value, encoded value
+
+**Value source**:
+The origin of a Variable's current Resolved value: Template, Existing configuration, user answer, or fixed Template value.
+_Avoid_: Default
+
 **Annotation**:
 Wizard metadata expressed as a distinguished comment line in the Template.
 _Avoid_: Directive, command

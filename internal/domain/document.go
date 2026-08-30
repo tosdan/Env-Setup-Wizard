@@ -67,12 +67,16 @@ func (node AnnotationLine) LineNumber() int { return node.Line }
 func (AnnotationLine) isNode()              {}
 
 // Variable is a structurally valid dotenv assignment. RawValue is the exact
-// text after the first equals sign; semantic value parsing happens separately.
+// text after the first equals sign, while Value is its resolved content.
+// HasValue distinguishes an empty resolved value from a value not yet assigned.
 type Variable struct {
-	Key      string
-	RawValue string
-	Raw      string
-	Line     int
+	Key         string
+	RawValue    string
+	Value       string
+	HasValue    bool
+	ValueSource ValueSource
+	Raw         string
+	Line        int
 }
 
 func (node Variable) RawLine() string { return node.Raw }
