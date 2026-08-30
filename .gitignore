@@ -1,0 +1,7 @@
+.env*
+!.env.example
+
+/env-wizard
+/env-wizard.exe
+/coverage.out
+/.tmp/
