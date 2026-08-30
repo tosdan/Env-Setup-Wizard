@@ -3,6 +3,7 @@ package app_test
 import (
 	"bytes"
 	"context"
+	"io"
 	"os"
 	"path/filepath"
 	"strings"
@@ -183,6 +184,42 @@ func TestRunRejectsInvalidExistingOutputBeforeWizard(t *testing.T) {
 	assertFileContent(t, outputPath, existingContent)
 }
 
+func TestRunRevalidatesOutputAfterWizard(t *testing.T) {
+	t.Setenv("TERM", "dumb")
+	root, templatePath, outputPath := workflowPaths(t, "KEY=old\n", nil)
+	protectedPath := filepath.Join(root, "protected.env")
+	protectedContent := []byte("PROTECTED=unchanged\n")
+	if err := os.WriteFile(protectedPath, protectedContent, 0o600); err != nil {
+		t.Fatalf("WriteFile(%q): %v", protectedPath, err)
+	}
+
+	var mutationErr error
+	input := &mutatingReader{
+		reader: iotest.OneByteReader(strings.NewReader("new\n")),
+		mutate: func() {
+			mutationErr = os.Symlink(protectedPath, outputPath)
+		},
+	}
+	var output bytes.Buffer
+	err := app.Run(context.Background(), app.Options{
+		TemplatePath: templatePath,
+		OutputPath:   outputPath,
+		Force:        true,
+		Runtime: &app.Runtime{
+			Input:       input,
+			Output:      &output,
+			Interactive: true,
+		},
+	})
+	if mutationErr != nil {
+		t.Skipf("symbolic links are unavailable: %v", mutationErr)
+	}
+	if err == nil || !strings.Contains(err.Error(), "revalidate paths before write") || !strings.Contains(err.Error(), "must not be a symbolic link") {
+		t.Fatalf("Run() error = %v, want pre-write symlink rejection", err)
+	}
+	assertFileContent(t, protectedPath, protectedContent)
+}
+
 func workflowPaths(t *testing.T, template string, existing []byte) (string, string, string) {
 	t.Helper()
 	root := t.TempDir()
@@ -205,6 +242,20 @@ func interactiveRuntime(input string, output *bytes.Buffer) *app.Runtime {
 		Output:      output,
 		Interactive: true,
 	}
+}
+
+type mutatingReader struct {
+	reader io.Reader
+	mutate func()
+	done   bool
+}
+
+func (reader *mutatingReader) Read(buffer []byte) (int, error) {
+	if !reader.done {
+		reader.done = true
+		reader.mutate()
+	}
+	return reader.reader.Read(buffer)
 }
 
 func assertOutputContains(t *testing.T, output string, fragments ...string) {

@@ -119,6 +119,9 @@ func Run(ctx context.Context, options Options) error {
 			return nil
 		}
 	}
+	if err := projectfs.Preflight(options.TemplatePath, options.OutputPath); err != nil {
+		return fmt.Errorf("revalidate paths before write: %w", err)
+	}
 
 	return errNotImplemented
 }
