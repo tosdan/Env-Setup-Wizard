@@ -110,15 +110,16 @@ func (AnnotationLine) isNode()              {}
 // text after the first equals sign, while Value is its resolved content.
 // HasValue distinguishes an empty resolved value from a value not yet assigned.
 type Variable struct {
-	Key         string
-	RawValue    string
-	Value       string
-	HasValue    bool
-	ValueSource ValueSource
-	Annotations Annotations
-	Section     string
-	Raw         string
-	Line        int
+	Key                string
+	RawValue           string
+	Value              string
+	HasValue           bool
+	ValueSource        ValueSource
+	Annotations        Annotations
+	Section            string
+	ExistingValueIssue *ExistingValueIssue
+	Raw                string
+	Line               int
 }
 
 func (node Variable) RawLine() string { return node.Raw }

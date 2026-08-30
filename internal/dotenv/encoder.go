@@ -80,6 +80,7 @@ func UpdateValue(document *domain.Document, key, value string, source domain.Val
 		variable.Value = value
 		variable.HasValue = true
 		variable.ValueSource = source
+		variable.ExistingValueIssue = nil
 		variable.RawValue = encoded
 		variable.Raw = variable.Key + "=" + encoded
 		document.Nodes[index] = variable

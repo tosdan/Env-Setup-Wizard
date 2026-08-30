@@ -1,11 +1,13 @@
 package app
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"fmt"
 	"io"
 	"os"
+	"path/filepath"
 
 	charmterm "github.com/charmbracelet/x/term"
 	"github.com/tosdan/env-setup-wizard/internal/domain"
@@ -17,7 +19,7 @@ import (
 // ErrCanceled reports a user cancellation rather than an operational failure.
 var ErrCanceled = errors.New("operation canceled")
 
-var errNotImplemented = errors.New("summary and confirmation not available yet")
+var errNotImplemented = errors.New("safe write not available yet")
 
 // Runtime contains process resources that are injected for testability.
 type Runtime struct {
@@ -51,16 +53,22 @@ func Run(ctx context.Context, options Options) error {
 	if err != nil {
 		return fmt.Errorf("parse template: %w", err)
 	}
+	existing, err := dotenv.LoadExisting(options.OutputPath)
+	if err != nil {
+		return fmt.Errorf("load existing output: %w", err)
+	}
+	document, err = dotenv.MergeExisting(document, existing.Values)
+	if err != nil {
+		return fmt.Errorf("merge existing output: %w", err)
+	}
 	groups, err := wizard.BuildQuestionGroups(document)
 	if err != nil {
 		return fmt.Errorf("build questions: %w", err)
 	}
-	answeredGroups, err := wizard.Run(ctx, groups, terminalFor(options.Runtime))
+	terminal := terminalFor(options.Runtime)
+	answeredGroups, err := wizard.Run(ctx, groups, terminal)
 	if err != nil {
-		if errors.Is(err, wizard.ErrCanceled) {
-			return ErrCanceled
-		}
-		return fmt.Errorf("run wizard: %w", err)
+		return mapWizardError("run wizard", err)
 	}
 	for _, group := range answeredGroups {
 		for _, question := range group.Questions {
@@ -72,11 +80,54 @@ func Run(ctx context.Context, options Options) error {
 			}
 		}
 	}
-	if _, err := projectfs.RenderConfiguration(document); err != nil {
+	summary, err := wizard.RenderSummary(document)
+	if err != nil {
+		return fmt.Errorf("render summary: %w", err)
+	}
+	if terminal.Output == nil {
+		return errors.New("write summary: interactive terminal output is required")
+	}
+	if _, err := io.WriteString(terminal.Output, summary); err != nil {
+		return fmt.Errorf("write summary: %w", err)
+	}
+
+	candidate, err := projectfs.RenderConfiguration(document)
+	if err != nil {
 		return fmt.Errorf("render configuration: %w", err)
+	}
+	if existing.Exists && bytes.Equal(candidate, existing.Content) {
+		if _, err := fmt.Fprintln(terminal.Output, "No changes detected."); err != nil {
+			return fmt.Errorf("report unchanged output: %w", err)
+		}
+		return nil
+	}
+
+	if !options.Force {
+		confirmed, err := wizard.ConfirmWrite(
+			ctx,
+			filepath.Base(options.OutputPath),
+			existing.Exists,
+			terminal,
+		)
+		if err != nil {
+			return mapWizardError("confirm output", err)
+		}
+		if !confirmed {
+			if _, err := fmt.Fprintln(terminal.Output, "No changes made."); err != nil {
+				return fmt.Errorf("report declined confirmation: %w", err)
+			}
+			return nil
+		}
 	}
 
 	return errNotImplemented
+}
+
+func mapWizardError(action string, err error) error {
+	if errors.Is(err, wizard.ErrCanceled) {
+		return ErrCanceled
+	}
+	return fmt.Errorf("%s: %w", action, err)
 }
 
 func terminalFor(runtime *Runtime) wizard.Terminal {

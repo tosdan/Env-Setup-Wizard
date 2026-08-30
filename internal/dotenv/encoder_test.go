@@ -119,6 +119,12 @@ func TestUpdateValueStoresCanonicalAssignment(t *testing.T) {
 	if err != nil {
 		t.Fatalf("ParseTemplate() error = %v, want nil", err)
 	}
+	for index, node := range document.Nodes {
+		if variable, ok := node.(domain.Variable); ok && variable.Key == "NAME" {
+			variable.ExistingValueIssue = &domain.ExistingValueIssue{Message: "resolved by update"}
+			document.Nodes[index] = variable
+		}
+	}
 
 	if err := dotenv.UpdateValue(&document, "ENABLED", "TRUE", domain.ValueFromUser); err != nil {
 		t.Fatalf("UpdateValue(ENABLED) error = %v, want nil", err)
@@ -142,6 +148,9 @@ func TestUpdateValueStoresCanonicalAssignment(t *testing.T) {
 	}
 	if name.ValueSource != domain.ValueFromExisting {
 		t.Errorf("NAME ValueSource = %q, want %q", name.ValueSource, domain.ValueFromExisting)
+	}
+	if name.ExistingValueIssue != nil {
+		t.Errorf("NAME ExistingValueIssue = %#v, want nil after update", name.ExistingValueIssue)
 	}
 }
 

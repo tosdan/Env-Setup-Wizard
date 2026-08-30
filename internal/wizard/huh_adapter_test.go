@@ -70,7 +70,7 @@ func TestRunCollectsAndValidatesAnswers(t *testing.T) {
 		groups,
 		Terminal{
 			Input: iotest.OneByteReader(
-				strings.NewReader("new name\ninvalid\n08080\n2\nn\n"),
+				strings.NewReader("new name\nnew name\ninvalid\n08080\n2\nn\n"),
 			),
 			Output:      &output,
 			Interactive: true,
@@ -81,6 +81,9 @@ func TestRunCollectsAndValidatesAnswers(t *testing.T) {
 	}
 	if !strings.Contains(output.String(), "decimal port number") {
 		t.Fatalf("wizard output = %q, want validation diagnostic", output.String())
+	}
+	if !strings.Contains(output.String(), issue.Message) {
+		t.Fatalf("wizard output = %q, want existing-value diagnostic", output.String())
 	}
 	if !reflect.DeepEqual(groups, original) {
 		t.Fatalf("Run() mutated input groups:\ngot  %#v\nwant %#v", groups, original)
@@ -131,6 +134,91 @@ func TestRunPreservesUnchangedDefaultAndPlaceholderIsNotAValue(t *testing.T) {
 	question := answered[0].Questions[0]
 	if question.Value != "" || question.ValueSource != domain.ValueFromTemplate {
 		t.Fatalf("Question = %#v, want unchanged empty template value", question)
+	}
+}
+
+func TestRunTreatsConfirmedRecoveryFallbackAsAUserValue(t *testing.T) {
+	t.Setenv("TERM", "dumb")
+	issue := &domain.ExistingValueIssue{Message: "Existing value must be confirmed."}
+	groups := []domain.QuestionGroup{{
+		Section: "Configuration",
+		Questions: []domain.Question{{
+			Key:                "RECOVERED",
+			Prompt:             "Recovered",
+			Value:              "fallback",
+			HasValue:           true,
+			ValueSource:        domain.ValueFromTemplate,
+			Type:               domain.VariableTypeString,
+			Kind:               domain.QuestionKindInput,
+			ExistingValueIssue: issue,
+		}},
+	}}
+
+	answered, err := Run(
+		context.Background(),
+		groups,
+		Terminal{
+			Input: iotest.OneByteReader(
+				strings.NewReader("fallback\nfallback\n"),
+			),
+			Output:      io.Discard,
+			Interactive: true,
+		},
+	)
+	if err != nil {
+		t.Fatalf("Run() error = %v, want nil", err)
+	}
+	question := answered[0].Questions[0]
+	if question.Value != "fallback" || question.ValueSource != domain.ValueFromUser || question.ExistingValueIssue != nil {
+		t.Fatalf("Question = %#v, want confirmed fallback from user without issue", question)
+	}
+}
+
+func TestRunShowsRecoveryIssueForAccessibleSelectAndConfirm(t *testing.T) {
+	t.Setenv("TERM", "dumb")
+	groups := []domain.QuestionGroup{{
+		Section: "Configuration",
+		Questions: []domain.Question{
+			{
+				Key: "CHOICE", Prompt: "Choice", Value: "development", HasValue: true,
+				ValueSource: domain.ValueFromTemplate, Type: domain.VariableTypeString,
+				Kind: domain.QuestionKindSelect, Options: []string{"development", "production"},
+				ExistingValueIssue: &domain.ExistingValueIssue{Message: "Choose an allowed replacement."},
+			},
+			{
+				Key: "ENABLED", Prompt: "Enabled", Value: "true", HasValue: true,
+				ValueSource: domain.ValueFromTemplate, Type: domain.VariableTypeBool,
+				Kind:               domain.QuestionKindConfirm,
+				ExistingValueIssue: &domain.ExistingValueIssue{Message: "Confirm a valid boolean replacement."},
+			},
+		},
+	}}
+	var output bytes.Buffer
+
+	answered, err := Run(
+		context.Background(),
+		groups,
+		Terminal{
+			Input: iotest.OneByteReader(
+				strings.NewReader("1\n2\nn\nn\n"),
+			),
+			Output:      &output,
+			Interactive: true,
+		},
+	)
+	if err != nil {
+		t.Fatalf("Run() error = %v, want nil", err)
+	}
+	for _, message := range []string{"Choose an allowed replacement.", "Confirm a valid boolean replacement."} {
+		if !strings.Contains(output.String(), message) {
+			t.Errorf("wizard output = %q, want recovery message %q", output.String(), message)
+		}
+	}
+	if got := answered[0].Questions[0]; got.Value != "production" || got.ValueSource != domain.ValueFromUser {
+		t.Errorf("select Question = %#v, want production from user", got)
+	}
+	if got := answered[0].Questions[1]; got.Value != "false" || got.ValueSource != domain.ValueFromUser {
+		t.Errorf("confirm Question = %#v, want false from user", got)
 	}
 }
 
@@ -295,16 +383,6 @@ func TestFieldForQuestionRejectsInvalidQuestionStateWithoutLeakingValue(t *testi
 		if strings.Contains(err.Error(), "do-not-show") {
 			t.Fatalf("fieldForQuestion() error leaked secret value: %q", err)
 		}
-	}
-}
-
-func TestQuestionDescriptionIncludesSafeExistingValueIssue(t *testing.T) {
-	question := domain.Question{
-		Description:        "Template help.",
-		ExistingValueIssue: &domain.ExistingValueIssue{Message: "Current value is incompatible."},
-	}
-	if got, want := questionDescription(question), "Current value is incompatible.\nTemplate help."; got != want {
-		t.Fatalf("questionDescription() = %q, want %q", got, want)
 	}
 }
 

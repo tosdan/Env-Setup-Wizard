@@ -84,20 +84,29 @@ func questionFromVariable(variable domain.Variable, section string) domain.Quest
 	}
 
 	return domain.Question{
-		Key:         variable.Key,
-		Prompt:      prompt,
-		Description: variable.Annotations.Description,
-		Value:       variable.Value,
-		HasValue:    variable.HasValue,
-		ValueSource: variable.ValueSource,
-		Type:        variableType,
-		Kind:        questionKind(variableType, variable.Annotations.Options),
-		Required:    variable.Annotations.Required,
-		Secret:      variable.Annotations.Secret,
-		Options:     append([]string(nil), variable.Annotations.Options...),
-		Placeholder: variable.Annotations.Placeholder,
-		Section:     section,
+		Key:                variable.Key,
+		Prompt:             prompt,
+		Description:        variable.Annotations.Description,
+		Value:              variable.Value,
+		HasValue:           variable.HasValue,
+		ValueSource:        variable.ValueSource,
+		Type:               variableType,
+		Kind:               questionKind(variableType, variable.Annotations.Options),
+		Required:           variable.Annotations.Required,
+		Secret:             variable.Annotations.Secret,
+		Options:            append([]string(nil), variable.Annotations.Options...),
+		Placeholder:        variable.Annotations.Placeholder,
+		Section:            section,
+		ExistingValueIssue: cloneExistingValueIssue(variable.ExistingValueIssue),
 	}
+}
+
+func cloneExistingValueIssue(issue *domain.ExistingValueIssue) *domain.ExistingValueIssue {
+	if issue == nil {
+		return nil
+	}
+	cloned := *issue
+	return &cloned
 }
 
 func questionKind(variableType domain.VariableType, options []string) domain.QuestionKind {

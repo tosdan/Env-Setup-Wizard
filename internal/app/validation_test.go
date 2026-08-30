@@ -2,6 +2,7 @@ package app_test
 
 import (
 	"context"
+	"io"
 	"os"
 	"path/filepath"
 	"strings"
@@ -36,11 +37,13 @@ func TestRunAcceptsAllFixedTemplateBeforeInteractiveStage(t *testing.T) {
 	err := app.Run(context.Background(), app.Options{
 		TemplatePath: templatePath,
 		OutputPath:   filepath.Join(root, ".env"),
+		Force:        true,
 		Runtime: &app.Runtime{
+			Output:      io.Discard,
 			Interactive: true,
 		},
 	})
-	if err == nil || err.Error() != "summary and confirmation not available yet" {
+	if err == nil || err.Error() != "safe write not available yet" {
 		t.Fatalf("Run() error = %v, want next-stage placeholder", err)
 	}
 }
@@ -74,13 +77,14 @@ func TestRunCompletesWizardBeforeNextStage(t *testing.T) {
 	err := app.Run(context.Background(), app.Options{
 		TemplatePath: templatePath,
 		OutputPath:   filepath.Join(root, ".env"),
+		Force:        true,
 		Runtime: &app.Runtime{
 			Input:       strings.NewReader("new\n"),
 			Output:      &strings.Builder{},
 			Interactive: true,
 		},
 	})
-	if err == nil || err.Error() != "summary and confirmation not available yet" {
+	if err == nil || err.Error() != "safe write not available yet" {
 		t.Fatalf("Run() error = %v, want next-stage placeholder", err)
 	}
 	if _, statErr := os.Stat(filepath.Join(root, ".env")); !os.IsNotExist(statErr) {

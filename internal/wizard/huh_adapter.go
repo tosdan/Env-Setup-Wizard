@@ -27,10 +27,11 @@ type Terminal struct {
 }
 
 type answerBinding struct {
-	question     *domain.Question
-	initialValue string
-	textValue    string
-	boolValue    bool
+	question             *domain.Question
+	initialValue         string
+	textValue            string
+	boolValue            bool
+	existingIssuePending string
 }
 
 // Run presents the Question groups and returns an updated copy. The input
@@ -116,13 +117,16 @@ func fieldForQuestion(question *domain.Question) (*answerBinding, huh.Field, err
 	}
 
 	binding := &answerBinding{
-		question:     question,
-		initialValue: question.Value,
-		textValue:    question.Value,
+		question:             question,
+		initialValue:         question.Value,
+		textValue:            question.Value,
+		existingIssuePending: "",
 	}
-	description := questionDescription(*question)
+	if question.ExistingValueIssue != nil {
+		binding.existingIssuePending = question.ExistingValueIssue.Message
+	}
 	validateText := func(value string) error {
-		return validation.ValidateQuestion(*question, value)
+		return binding.validateText(value)
 	}
 
 	switch question.Kind {
@@ -130,7 +134,7 @@ func fieldForQuestion(question *domain.Question) (*answerBinding, huh.Field, err
 		field := huh.NewInput().
 			Key(question.Key).
 			Title(question.Prompt).
-			Description(description).
+			Description(question.Description).
 			Value(&binding.textValue).
 			Validate(validateText)
 		if question.Placeholder != "" {
@@ -145,7 +149,7 @@ func fieldForQuestion(question *domain.Question) (*answerBinding, huh.Field, err
 		field := huh.NewSelect[string]().
 			Key(question.Key).
 			Title(question.Prompt).
-			Description(description).
+			Description(question.Description).
 			Options(huh.NewOptions(question.Options...)...).
 			Value(&binding.textValue).
 			Validate(validateText)
@@ -157,19 +161,58 @@ func fieldForQuestion(question *domain.Question) (*answerBinding, huh.Field, err
 			return nil, nil, fmt.Errorf("question %q has an invalid boolean value", question.Key)
 		}
 		binding.boolValue = boolValue
+		validateBool := func(value bool) error {
+			return binding.validateText(strconv.FormatBool(value))
+		}
 		field := huh.NewConfirm().
 			Key(question.Key).
 			Title(question.Prompt).
-			Description(description).
+			Description(question.Description).
 			Value(&binding.boolValue).
-			Validate(func(value bool) error {
-				return validation.ValidateQuestion(*question, strconv.FormatBool(value))
-			})
+			Validate(validateBool)
+		if question.ExistingValueIssue != nil {
+			return binding, &validatedAccessibleConfirm{
+				Confirm:  field,
+				validate: validateBool,
+			}, nil
+		}
 		return binding, field, nil
 
 	default:
 		return nil, nil, fmt.Errorf("question %q has unsupported kind %q", question.Key, question.Kind)
 	}
+}
+
+// validatedAccessibleConfirm compensates for Huh's accessible Confirm path,
+// which does not invoke the field validator itself.
+type validatedAccessibleConfirm struct {
+	*huh.Confirm
+	validate func(bool) error
+}
+
+func (field *validatedAccessibleConfirm) RunAccessible(output io.Writer, input io.Reader) error {
+	for {
+		if err := field.Confirm.RunAccessible(output, input); err != nil {
+			return err
+		}
+		value := field.GetValue().(bool)
+		if err := field.validate(value); err != nil {
+			if _, writeErr := fmt.Fprintln(output, err); writeErr != nil {
+				return writeErr
+			}
+			continue
+		}
+		return nil
+	}
+}
+
+func (binding *answerBinding) validateText(value string) error {
+	if binding.existingIssuePending != "" {
+		message := binding.existingIssuePending
+		binding.existingIssuePending = ""
+		return errors.New(message)
+	}
+	return validation.ValidateQuestion(*binding.question, value)
 }
 
 func (binding *answerBinding) commit() error {
@@ -183,21 +226,11 @@ func (binding *answerBinding) commit() error {
 
 	binding.question.Value = value
 	binding.question.HasValue = true
-	if value != binding.initialValue {
+	if value != binding.initialValue || binding.question.ExistingValueIssue != nil {
 		binding.question.ValueSource = domain.ValueFromUser
 	}
 	binding.question.ExistingValueIssue = nil
 	return nil
-}
-
-func questionDescription(question domain.Question) string {
-	if question.ExistingValueIssue == nil || question.ExistingValueIssue.Message == "" {
-		return question.Description
-	}
-	if question.Description == "" {
-		return question.ExistingValueIssue.Message
-	}
-	return question.ExistingValueIssue.Message + "\n" + question.Description
 }
 
 func translateFormError(ctx context.Context, err error) error {
