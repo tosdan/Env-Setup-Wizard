@@ -33,4 +33,19 @@ Apache-2.0, MIT, BSD-2-Clause, BSD-3-Clause, and ISC are accepted automatically.
 - No generic validation framework, CLI framework, or logging dependency is accepted for v1.
 - No exception to the license policy is currently required.
 
+## License inventory
+
+`THIRD_PARTY_NOTICES` contains the license and notice files for the union of Go
+modules linked into the five CGO-disabled v1 release targets. Regenerate and
+verify it with:
+
+```text
+go run ./internal/tools/licenses -write
+go run ./internal/tools/licenses -check
+```
+
+The verifier derives the inventory from `go list` for every target and rejects
+missing, unrecognized, or unapproved top-level license files. A dependency
+change therefore requires an explicit review of the regenerated notice.
+
 The disposable Phase 0 experiments and their implications are recorded in [`docs/phase-0-spikes.md`](docs/phase-0-spikes.md).

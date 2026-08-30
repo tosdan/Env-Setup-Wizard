@@ -177,6 +177,7 @@ terminal smoke test. Windows arm64 is outside the v1 scope.
 ```text
 go test ./...
 go vet ./...
+go run ./internal/tools/licenses -check
 go run ./cmd/env-wizard --version
 ```
 
@@ -190,3 +191,4 @@ and short commit without embedding a build timestamp.
 - [`FUTURE.md`](FUTURE.md) preserves intentionally deferred ideas.
 - [`DEPENDENCIES.md`](DEPENDENCIES.md) records the dependency policy.
 - [`LICENSE`](LICENSE) contains the Apache-2.0 project license.
+- [`THIRD_PARTY_NOTICES`](THIRD_PARTY_NOTICES) contains dependency licenses and notices.
