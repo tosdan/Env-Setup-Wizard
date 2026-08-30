@@ -153,6 +153,60 @@ func TestArchivesAreDeterministicAndVerifiable(t *testing.T) {
 	}
 }
 
+func TestArchiveDocumentsArePortableAcrossCheckoutLineEndings(t *testing.T) {
+	t.Parallel()
+
+	linuxRoot := testReleaseRoot(t)
+	windowsRoot := testReleaseRoot(t)
+	for _, name := range []string{"README.md", "LICENSE", "THIRD_PARTY_NOTICES"} {
+		path := filepath.Join(windowsRoot, name)
+		content, err := os.ReadFile(path)
+		if err != nil {
+			t.Fatal(err)
+		}
+		content = bytes.ReplaceAll(content, []byte("\n"), []byte("\r\n"))
+		if err := os.WriteFile(path, content, 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	releaseTarget, err := targetByName("windows-amd64")
+	if err != nil {
+		t.Fatal(err)
+	}
+	binaryPath := filepath.Join(windowsRoot, releaseTarget.binaryName)
+	if err := os.WriteFile(binaryPath, []byte("test executable"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	archivePath := filepath.Join(t.TempDir(), "artifact.zip")
+	if err := createArchive(windowsRoot, binaryPath, archivePath, releaseTarget); err != nil {
+		t.Fatalf("createArchive returned %v", err)
+	}
+
+	if err := verifyArchive(linuxRoot, archivePath, releaseTarget); err != nil {
+		t.Fatalf("archive created from CRLF checkout failed verification from LF checkout: %v", err)
+	}
+	linuxBinaryPath := filepath.Join(linuxRoot, releaseTarget.binaryName)
+	if err := os.WriteFile(linuxBinaryPath, []byte("test executable"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	linuxArchivePath := filepath.Join(t.TempDir(), "artifact.zip")
+	if err := createArchive(linuxRoot, linuxBinaryPath, linuxArchivePath, releaseTarget); err != nil {
+		t.Fatalf("createArchive from LF checkout returned %v", err)
+	}
+	windowsArchive, err := os.ReadFile(archivePath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	linuxArchive, err := os.ReadFile(linuxArchivePath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !bytes.Equal(windowsArchive, linuxArchive) {
+		t.Fatal("CRLF and LF checkouts produced different release archives")
+	}
+}
+
 func TestVerifyArchiveDetectsChangedRepositoryDocument(t *testing.T) {
 	t.Parallel()
 

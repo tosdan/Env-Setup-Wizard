@@ -427,7 +427,7 @@ func loadArchiveEntries(root, binaryPath string, releaseTarget target) ([]archiv
 		if err != nil {
 			return nil, fmt.Errorf("read archive input %s: %w", name, err)
 		}
-		entries = append(entries, archiveEntry{name: name, content: content})
+		entries = append(entries, archiveEntry{name: name, content: canonicalReleaseDocument(content)})
 	}
 	binary, err := os.ReadFile(binaryPath)
 	if err != nil {
@@ -529,9 +529,13 @@ func expectedEntries(root string, releaseTarget target) (map[string]archiveEntry
 		if err != nil {
 			return nil, fmt.Errorf("read expected archive input %s: %w", name, err)
 		}
-		expected[name] = archiveEntry{name: name, content: content}
+		expected[name] = archiveEntry{name: name, content: canonicalReleaseDocument(content)}
 	}
 	return expected, nil
+}
+
+func canonicalReleaseDocument(content []byte) []byte {
+	return bytes.ReplaceAll(content, []byte("\r\n"), []byte("\n"))
 }
 
 func verifyZip(path string, expected map[string]archiveEntry) error {
