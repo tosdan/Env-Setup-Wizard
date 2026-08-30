@@ -38,7 +38,7 @@ func TestRunReachesNextPipelineStageAfterSuccessfulPreflight(t *testing.T) {
 		OutputPath:   filepath.Join(root, ".env"),
 	})
 
-	if err == nil || err.Error() != "structural scanning not available yet" {
+	if err == nil || err.Error() != "semantic dotenv parsing not available yet" {
 		t.Fatalf("Run() error = %v, want next-stage placeholder", err)
 	}
 }
@@ -58,7 +58,7 @@ func TestRunLoadsTemplateBeforeNextPipelineStage(t *testing.T) {
 	if err == nil {
 		t.Fatal("Run() error = nil, want template decoding error")
 	}
-	if !strings.Contains(err.Error(), "load template: decode template") {
+	if !strings.Contains(err.Error(), "parse template: decode template") {
 		t.Fatalf("Run() error = %q, want contextual template decoding error", err)
 	}
 }

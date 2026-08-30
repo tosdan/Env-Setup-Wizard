@@ -7,153 +7,136 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/tosdan/env-setup-wizard/internal/domain"
 	"github.com/tosdan/env-setup-wizard/internal/dotenv"
 )
 
-func TestLoadTemplatePreservesValidSource(t *testing.T) {
+func TestParseTemplatePreservesValidSourceFormat(t *testing.T) {
 	tests := []struct {
-		name  string
-		input []byte
-		want  dotenv.Source
+		name             string
+		input            []byte
+		wantText         string
+		wantLineEnding   domain.LineEnding
+		wantFinalNewline bool
 	}{
+		{name: "empty source defaults to LF", wantLineEnding: domain.LineEndingLF},
 		{
-			name: "empty source defaults to LF",
-			want: dotenv.Source{LineEnding: dotenv.LineEndingLF},
+			name:           "single line without final newline",
+			input:          []byte("KEY=value"),
+			wantText:       "KEY=value",
+			wantLineEnding: domain.LineEndingLF,
 		},
 		{
-			name:  "single line without final newline",
-			input: []byte("KEY=value"),
-			want: dotenv.Source{
-				Text:       "KEY=value",
-				LineEnding: dotenv.LineEndingLF,
-			},
+			name:             "LF with final newline",
+			input:            []byte("FIRST=one\nSECOND=two\n"),
+			wantText:         "FIRST=one\nSECOND=two\n",
+			wantLineEnding:   domain.LineEndingLF,
+			wantFinalNewline: true,
 		},
 		{
-			name:  "LF with final newline",
-			input: []byte("FIRST=one\nSECOND=two\n"),
-			want: dotenv.Source{
-				Text:            "FIRST=one\nSECOND=two\n",
-				LineEnding:      dotenv.LineEndingLF,
-				HasFinalNewline: true,
-			},
+			name:           "CRLF without final newline",
+			input:          []byte("FIRST=one\r\nSECOND=two"),
+			wantText:       "FIRST=one\r\nSECOND=two",
+			wantLineEnding: domain.LineEndingCRLF,
 		},
 		{
-			name:  "CRLF without final newline",
-			input: []byte("FIRST=one\r\nSECOND=two"),
-			want: dotenv.Source{
-				Text:       "FIRST=one\r\nSECOND=two",
-				LineEnding: dotenv.LineEndingCRLF,
-			},
+			name:             "initial UTF-8 BOM is removed",
+			input:            []byte("\xef\xbb\xbfKEY=value\r\n"),
+			wantText:         "KEY=value\r\n",
+			wantLineEnding:   domain.LineEndingCRLF,
+			wantFinalNewline: true,
 		},
 		{
-			name:  "initial UTF-8 BOM is removed",
-			input: []byte("\xef\xbb\xbfKEY=value\r\n"),
-			want: dotenv.Source{
-				Text:            "KEY=value\r\n",
-				LineEnding:      dotenv.LineEndingCRLF,
-				HasFinalNewline: true,
-			},
-		},
-		{
-			name:  "Unicode is preserved",
-			input: []byte("GREETING=caffè ☕\n"),
-			want: dotenv.Source{
-				Text:            "GREETING=caffè ☕\n",
-				LineEnding:      dotenv.LineEndingLF,
-				HasFinalNewline: true,
-			},
+			name:             "Unicode is preserved",
+			input:            []byte("GREETING='caffè ☕'\n"),
+			wantText:         "GREETING='caffè ☕'\n",
+			wantLineEnding:   domain.LineEndingLF,
+			wantFinalNewline: true,
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			path := writeSourceFile(t, tt.input)
+			path := writeTemplate(t, tt.input)
 
-			got, err := dotenv.LoadTemplate(path)
+			document, err := dotenv.ParseTemplate(path)
 			if err != nil {
-				t.Fatalf("LoadTemplate() error = %v, want nil", err)
+				t.Fatalf("ParseTemplate() error = %v, want nil", err)
 			}
-			if got != tt.want {
-				t.Fatalf("LoadTemplate() = %#v, want %#v", got, tt.want)
+			if document.LineEnding != tt.wantLineEnding {
+				t.Errorf("LineEnding = %q, want %q", document.LineEnding, tt.wantLineEnding)
+			}
+			if document.HasFinalNewline != tt.wantFinalNewline {
+				t.Errorf("HasFinalNewline = %t, want %t", document.HasFinalNewline, tt.wantFinalNewline)
+			}
+			if got := reconstruct(document); got != tt.wantText {
+				t.Errorf("reconstructed source = %q, want %q", got, tt.wantText)
 			}
 		})
 	}
 }
 
-func TestLoadTemplateRejectsInvalidEncodingAndLineEndings(t *testing.T) {
+func TestParseTemplateRejectsInvalidEncodingAndLineEndings(t *testing.T) {
 	tests := []struct {
 		name        string
 		input       []byte
 		wantMessage string
 	}{
-		{
-			name:        "invalid UTF-8",
-			input:       []byte{0xff, 'K', 'E', 'Y'},
-			wantMessage: "template is not valid UTF-8",
-		},
-		{
-			name:        "UTF-16 little endian BOM",
-			input:       []byte{0xff, 0xfe, 'K', 0x00},
-			wantMessage: "UTF-16 templates are not supported",
-		},
-		{
-			name:        "UTF-16 big endian BOM",
-			input:       []byte{0xfe, 0xff, 0x00, 'K'},
-			wantMessage: "UTF-16 templates are not supported",
-		},
-		{
-			name:        "mixed LF then CRLF",
-			input:       []byte("FIRST=one\nSECOND=two\r\n"),
-			wantMessage: "mixed line endings at line 2",
-		},
-		{
-			name:        "mixed CRLF then LF",
-			input:       []byte("FIRST=one\r\nSECOND=two\n"),
-			wantMessage: "mixed line endings at line 2",
-		},
-		{
-			name:        "isolated carriage return",
-			input:       []byte("FIRST=one\rSECOND=two"),
-			wantMessage: "isolated carriage return at line 1",
-		},
-		{
-			name:        "trailing carriage return",
-			input:       []byte("KEY=value\r"),
-			wantMessage: "isolated carriage return at line 1",
-		},
+		{name: "invalid UTF-8", input: []byte{0xff, 'K'}, wantMessage: "template is not valid UTF-8"},
+		{name: "UTF-16 little endian BOM", input: []byte{0xff, 0xfe, 'K', 0x00}, wantMessage: "UTF-16 templates are not supported"},
+		{name: "UTF-16 big endian BOM", input: []byte{0xfe, 0xff, 0x00, 'K'}, wantMessage: "UTF-16 templates are not supported"},
+		{name: "mixed LF then CRLF", input: []byte("FIRST=one\nSECOND=two\r\n"), wantMessage: "mixed line endings at line 2"},
+		{name: "mixed CRLF then LF", input: []byte("FIRST=one\r\nSECOND=two\n"), wantMessage: "mixed line endings at line 2"},
+		{name: "isolated carriage return", input: []byte("FIRST=one\rSECOND=two"), wantMessage: "isolated carriage return at line 1"},
+		{name: "trailing carriage return", input: []byte("KEY=value\r"), wantMessage: "isolated carriage return at line 1"},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			path := writeSourceFile(t, tt.input)
+			path := writeTemplate(t, tt.input)
 
-			_, err := dotenv.LoadTemplate(path)
+			_, err := dotenv.ParseTemplate(path)
 			if err == nil {
-				t.Fatalf("LoadTemplate() error = nil, want it to contain %q", tt.wantMessage)
+				t.Fatalf("ParseTemplate() error = nil, want it to contain %q", tt.wantMessage)
 			}
 			if !strings.Contains(err.Error(), tt.wantMessage) {
-				t.Fatalf("LoadTemplate() error = %q, want it to contain %q", err, tt.wantMessage)
+				t.Fatalf("ParseTemplate() error = %q, want it to contain %q", err, tt.wantMessage)
 			}
 			if !strings.Contains(err.Error(), strconv.Quote(path)) {
-				t.Fatalf("LoadTemplate() error = %q, want template path %q", err, path)
+				t.Fatalf("ParseTemplate() error = %q, want template path %q", err, path)
 			}
 		})
 	}
 }
 
-func TestLoadTemplateReportsReadFailure(t *testing.T) {
+func TestParseTemplateReportsReadFailure(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "missing.env.example")
 
-	_, err := dotenv.LoadTemplate(path)
+	_, err := dotenv.ParseTemplate(path)
 	if err == nil {
-		t.Fatal("LoadTemplate() error = nil, want read failure")
+		t.Fatal("ParseTemplate() error = nil, want read failure")
 	}
 	if !strings.Contains(err.Error(), "read template") || !strings.Contains(err.Error(), path) {
-		t.Fatalf("LoadTemplate() error = %q, want contextual read failure", err)
+		t.Fatalf("ParseTemplate() error = %q, want contextual read failure", err)
 	}
 }
 
-func writeSourceFile(t *testing.T, data []byte) string {
+func reconstruct(document domain.Document) string {
+	var result strings.Builder
+	for index, node := range document.Nodes {
+		if index > 0 {
+			result.WriteString(string(document.LineEnding))
+		}
+		result.WriteString(node.RawLine())
+	}
+	if document.HasFinalNewline {
+		result.WriteString(string(document.LineEnding))
+	}
+
+	return result.String()
+}
+
+func writeTemplate(t *testing.T, data []byte) string {
 	t.Helper()
 	path := filepath.Join(t.TempDir(), ".env.example")
 	if err := os.WriteFile(path, data, 0o600); err != nil {

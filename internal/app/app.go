@@ -12,7 +12,7 @@ import (
 // ErrCanceled reports a user cancellation rather than an operational failure.
 var ErrCanceled = errors.New("operation canceled")
 
-var errNotImplemented = errors.New("structural scanning not available yet")
+var errNotImplemented = errors.New("semantic dotenv parsing not available yet")
 
 // Options contains the fully resolved command inputs for one workflow run.
 type Options struct {
@@ -34,8 +34,8 @@ func Run(ctx context.Context, options Options) error {
 	if err := projectfs.Preflight(options.TemplatePath, options.OutputPath); err != nil {
 		return fmt.Errorf("preflight paths: %w", err)
 	}
-	if _, err := dotenv.LoadTemplate(options.TemplatePath); err != nil {
-		return fmt.Errorf("load template: %w", err)
+	if _, err := dotenv.ParseTemplate(options.TemplatePath); err != nil {
+		return fmt.Errorf("parse template: %w", err)
 	}
 
 	return errNotImplemented

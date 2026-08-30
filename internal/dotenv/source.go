@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"os"
 	"unicode/utf8"
+
+	"github.com/tosdan/env-setup-wizard/internal/domain"
 )
 
 var (
@@ -14,77 +16,62 @@ var (
 	utf16BEBOM = []byte{0xfe, 0xff}
 )
 
-// LineEnding is the consistent newline sequence used by a template.
-type LineEnding string
-
-const (
-	// LineEndingLF represents Unix-style line endings.
-	LineEndingLF LineEnding = "\n"
-	// LineEndingCRLF represents Windows-style line endings.
-	LineEndingCRLF LineEnding = "\r\n"
-)
-
-// Source is a decoded template whose optional initial UTF-8 BOM has been
-// removed. Text otherwise retains the original bytes, including line endings.
-type Source struct {
+type source struct {
 	Text            string
-	LineEnding      LineEnding
+	LineEnding      domain.LineEnding
 	HasFinalNewline bool
 }
 
-// LoadTemplate reads and decodes a UTF-8 dotenv template. It accepts either LF
-// or CRLF, rejects mixed or isolated carriage returns, and uses LF as the
-// deterministic line-ending style when the source contains no newline.
-func LoadTemplate(path string) (Source, error) {
+func loadTemplate(path string) (source, error) {
 	data, err := os.ReadFile(path)
 	if err != nil {
-		return Source{}, fmt.Errorf("read template %q: %w", path, err)
+		return source{}, fmt.Errorf("read template %q: %w", path, err)
 	}
 
-	source, err := decodeSource(data)
+	decoded, err := decodeSource(data)
 	if err != nil {
-		return Source{}, fmt.Errorf("decode template %q: %w", path, err)
+		return source{}, fmt.Errorf("decode template %q: %w", path, err)
 	}
 
-	return source, nil
+	return decoded, nil
 }
 
-func decodeSource(data []byte) (Source, error) {
+func decodeSource(data []byte) (source, error) {
 	data = bytes.TrimPrefix(data, utf8BOM)
 	if bytes.HasPrefix(data, utf16LEBOM) || bytes.HasPrefix(data, utf16BEBOM) {
-		return Source{}, errors.New("UTF-16 templates are not supported; use UTF-8")
+		return source{}, errors.New("UTF-16 templates are not supported; use UTF-8")
 	}
 	if !utf8.Valid(data) {
-		return Source{}, errors.New("template is not valid UTF-8")
+		return source{}, errors.New("template is not valid UTF-8")
 	}
 
 	lineEnding, err := detectLineEnding(data)
 	if err != nil {
-		return Source{}, err
+		return source{}, err
 	}
 
-	return Source{
+	return source{
 		Text:            string(data),
 		LineEnding:      lineEnding,
 		HasFinalNewline: len(data) > 0 && data[len(data)-1] == '\n',
 	}, nil
 }
 
-func detectLineEnding(data []byte) (LineEnding, error) {
-	var detected LineEnding
+func detectLineEnding(data []byte) (domain.LineEnding, error) {
+	var detected domain.LineEnding
 	line := 1
 
 	for index := 0; index < len(data); {
-		var current LineEnding
+		var current domain.LineEnding
 		switch data[index] {
 		case '\r':
 			if index+1 >= len(data) || data[index+1] != '\n' {
 				return "", fmt.Errorf("isolated carriage return at line %d", line)
 			}
-			current = LineEndingCRLF
+			current = domain.LineEndingCRLF
 			index += 2
 		case '\n':
-			current = LineEndingLF
+			current = domain.LineEndingLF
 			index++
 		default:
 			index++
@@ -100,7 +87,7 @@ func detectLineEnding(data []byte) (LineEnding, error) {
 	}
 
 	if detected == "" {
-		return LineEndingLF, nil
+		return domain.LineEndingLF, nil
 	}
 
 	return detected, nil
