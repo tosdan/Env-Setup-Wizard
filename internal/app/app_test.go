@@ -3,6 +3,7 @@ package app_test
 import (
 	"context"
 	"errors"
+	"io"
 	"os"
 	"path/filepath"
 	"strings"
@@ -36,10 +37,18 @@ func TestRunReachesNextPipelineStageAfterSuccessfulPreflight(t *testing.T) {
 	err := app.Run(context.Background(), app.Options{
 		TemplatePath: templatePath,
 		OutputPath:   filepath.Join(root, ".env"),
+		Runtime:      nonInteractiveRuntime(),
 	})
 
-	if err == nil || err.Error() != "interactive wizard not available yet" {
-		t.Fatalf("Run() error = %v, want next-stage placeholder", err)
+	if err == nil || !strings.Contains(err.Error(), "interactive terminal is required") {
+		t.Fatalf("Run() error = %v, want terminal requirement", err)
+	}
+}
+
+func nonInteractiveRuntime() *app.Runtime {
+	return &app.Runtime{
+		Input:  strings.NewReader(""),
+		Output: io.Discard,
 	}
 }
 

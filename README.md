@@ -2,7 +2,10 @@
 
 Env Setup Wizard is a Go CLI that turns an annotated `.env.example` into an interactive setup wizard and writes a validated `.env` safely.
 
-The project is currently at **Phase 1**: the tested command interface and application seam are in place, while template processing and the interactive wizard are still under development.
+The project has completed **Phase 6**: template parsing, annotations, validation,
+configuration rendering, the question model, and the interactive wizard adapter
+are in place. Existing `.env` merge, summary and confirmation, and safe writes
+are the next implementation stages.
 
 ## Project documents
 
@@ -20,4 +23,6 @@ go test ./...
 go run ./cmd/env-wizard --version
 ```
 
-`--version` and the v1 command-line options are available. Template processing and user-facing generation will be implemented in the subsequent Phase 1 increments.
+`--version` and the v1 command-line options are available. The workflow currently
+stops after collecting and rendering the answers in memory; it does not write the
+output until the remaining confirmation and safe-write stages are implemented.
