@@ -7,9 +7,8 @@ import (
 	"github.com/tosdan/env-setup-wizard/internal/domain"
 )
 
-// ParseTemplate loads a Template and returns its ordered Document with Compose
-// dotenv semantics assigned to each Variable. Annotation meaning is assigned
-// by a later stage.
+// ParseTemplate loads and validates a Template, returning its ordered Document
+// with Compose dotenv semantics and annotations assigned to each Variable.
 func ParseTemplate(path string) (domain.Document, error) {
 	source, err := loadTemplate(path)
 	if err != nil {
@@ -27,6 +26,10 @@ func ParseTemplate(path string) (domain.Document, error) {
 	document, err = attachSemanticValues(document, values)
 	if err != nil {
 		return domain.Document{}, fmt.Errorf("assign template values %q: %w", path, err)
+	}
+	document, err = bindAnnotations(document)
+	if err != nil {
+		return domain.Document{}, fmt.Errorf("validate template annotations %q: %w", path, err)
 	}
 
 	return document, nil

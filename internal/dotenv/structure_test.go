@@ -69,7 +69,7 @@ func TestParseTemplateRecognizesSupportedVariableForms(t *testing.T) {
 }
 
 func TestParseTemplateDistinguishesAnnotationsFromComments(t *testing.T) {
-	input := "  # normal comment\n#@required\n\t#  @required\n"
+	input := "  # normal comment\n#@required\n\t#  @required\nKEY=value\n"
 	document, err := dotenv.ParseTemplate(writeTemplate(t, []byte(input)))
 	if err != nil {
 		t.Fatalf("ParseTemplate() error = %v, want nil", err)
@@ -77,7 +77,10 @@ func TestParseTemplateDistinguishesAnnotationsFromComments(t *testing.T) {
 
 	assertNode[domain.Comment](t, document.Nodes[0], 1, "  # normal comment")
 	assertNode[domain.Comment](t, document.Nodes[1], 2, "#@required")
-	assertNode[domain.AnnotationLine](t, document.Nodes[2], 3, "\t#  @required")
+	annotation := assertNode[domain.AnnotationLine](t, document.Nodes[2], 3, "\t#  @required")
+	if annotation.Name != domain.AnnotationRequired || annotation.Value != "" {
+		t.Errorf("AnnotationLine = %#v, want parsed @required flag", annotation)
+	}
 }
 
 func TestParseTemplateRejectsDuplicateVariables(t *testing.T) {

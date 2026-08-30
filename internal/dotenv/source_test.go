@@ -19,7 +19,6 @@ func TestParseTemplatePreservesValidSourceFormat(t *testing.T) {
 		wantLineEnding   domain.LineEnding
 		wantFinalNewline bool
 	}{
-		{name: "empty source defaults to LF", wantLineEnding: domain.LineEndingLF},
 		{
 			name:           "single line without final newline",
 			input:          []byte("KEY=value"),

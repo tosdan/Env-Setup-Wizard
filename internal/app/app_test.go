@@ -38,7 +38,7 @@ func TestRunReachesNextPipelineStageAfterSuccessfulPreflight(t *testing.T) {
 		OutputPath:   filepath.Join(root, ".env"),
 	})
 
-	if err == nil || err.Error() != "annotation validation not available yet" {
+	if err == nil || err.Error() != "template rendering not available yet" {
 		t.Fatalf("Run() error = %v, want next-stage placeholder", err)
 	}
 }

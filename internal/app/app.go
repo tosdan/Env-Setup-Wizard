@@ -12,7 +12,7 @@ import (
 // ErrCanceled reports a user cancellation rather than an operational failure.
 var ErrCanceled = errors.New("operation canceled")
 
-var errNotImplemented = errors.New("annotation validation not available yet")
+var errNotImplemented = errors.New("template rendering not available yet")
 
 // Options contains the fully resolved command inputs for one workflow run.
 type Options struct {

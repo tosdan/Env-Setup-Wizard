@@ -32,6 +32,14 @@ _Avoid_: Default
 Wizard metadata expressed as a distinguished comment line in the Template.
 _Avoid_: Directive, command
 
+**Variable type**:
+The annotation-selected validation and interaction semantics of a Variable: string, integer, boolean, port, or URL.
+_Avoid_: Go type, widget
+
+**Section**:
+The named wizard grouping context assigned to Variables in document order. Repeated names represent the same logical group without changing Document order.
+_Avoid_: Document section, reordered block
+
 **Question**:
 A configurable interaction derived from a Variable and its annotations.
 _Avoid_: Variable, field
