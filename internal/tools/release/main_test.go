@@ -92,6 +92,31 @@ func TestLinkerFlagsTargetMainPackageVariables(t *testing.T) {
 	}
 }
 
+func TestReadmeDocumentsEveryReleaseInstallationPath(t *testing.T) {
+	t.Parallel()
+
+	readme, err := os.ReadFile(filepath.Join("..", "..", "..", "README.md"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	content := string(readme)
+	for _, required := range []string{
+		"https://github.com/tosdan/Env-Setup-Wizard/releases",
+		"env-wizard_<version>_windows_amd64.zip",
+		"env-wizard_<version>_linux_amd64.tar.gz",
+		"env-wizard_<version>_linux_arm64.tar.gz",
+		"env-wizard_<version>_darwin_amd64.tar.gz",
+		"env-wizard_<version>_darwin_arm64.tar.gz",
+		"SHA256SUMS",
+		"github.com/tosdan/env-setup-wizard/cmd/env-wizard@latest",
+		"github.com/tosdan/env-setup-wizard/cmd/env-wizard@v1.0.0",
+	} {
+		if !strings.Contains(content, required) {
+			t.Errorf("README is missing release installation contract %q", required)
+		}
+	}
+}
+
 func TestArchivesAreDeterministicAndVerifiable(t *testing.T) {
 	t.Parallel()
 

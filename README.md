@@ -22,11 +22,74 @@ packaging are in progress in Phase 9.
 
 ## Installation
 
-Go 1.26 or newer is required when installing or building from source.
+### Prebuilt archive
+
+Open [GitHub Releases](https://github.com/tosdan/Env-Setup-Wizard/releases) and
+download `SHA256SUMS` plus the one archive matching the machine:
+
+| Platform | Archive |
+| --- | --- |
+| Windows amd64 | `env-wizard_<version>_windows_amd64.zip` |
+| Linux amd64 | `env-wizard_<version>_linux_amd64.tar.gz` |
+| Linux arm64 | `env-wizard_<version>_linux_arm64.tar.gz` |
+| macOS Intel (preview) | `env-wizard_<version>_darwin_amd64.tar.gz` |
+| macOS Apple Silicon (preview) | `env-wizard_<version>_darwin_arm64.tar.gz` |
+
+Before extracting, calculate the archive's SHA-256 digest and compare it
+case-insensitively with the matching row in `SHA256SUMS`. For example, on
+Windows PowerShell:
+
+```powershell
+Get-FileHash -Algorithm SHA256 .\env-wizard_1.0.0_windows_amd64.zip
+Select-String -SimpleMatch "env-wizard_1.0.0_windows_amd64.zip" .\SHA256SUMS
+```
+
+On Linux, use `sha256sum`; on macOS, use the preinstalled `shasum`:
+
+```text
+sha256sum env-wizard_1.0.0_linux_amd64.tar.gz
+grep env-wizard_1.0.0_linux_amd64.tar.gz SHA256SUMS
+
+shasum -a 256 env-wizard_1.0.0_darwin_arm64.tar.gz
+grep env-wizard_1.0.0_darwin_arm64.tar.gz SHA256SUMS
+```
+
+Extract the archive and run the version check from the destination directory:
+
+```powershell
+Expand-Archive .\env-wizard_1.0.0_windows_amd64.zip -DestinationPath .\env-wizard
+.\env-wizard\env-wizard.exe --version
+```
+
+```text
+tar -xzf env-wizard_1.0.0_linux_amd64.tar.gz
+./env-wizard --version
+```
+
+The executable is standalone: it can remain in that directory or be moved to a
+directory already present in `PATH`. Each archive also contains the README,
+Apache-2.0 `LICENSE`, and `THIRD_PARTY_NOTICES`. The macOS preview artifacts are
+not Developer ID signed or notarized; if macOS blocks one, prefer the source
+installation below instead of disabling Gatekeeper globally.
+
+### Install from source
+
+Go 1.26 or newer is required. Install the latest tagged version with:
 
 ```text
 go install github.com/tosdan/env-setup-wizard/cmd/env-wizard@latest
 ```
+
+Use an explicit version when reproducibility matters:
+
+```text
+go install github.com/tosdan/env-setup-wizard/cmd/env-wizard@v1.0.0
+```
+
+The Go binary installation directory (`GOBIN`, or `GOPATH/bin` by default) must
+be present in `PATH`.
+
+### Build a checkout
 
 From a local checkout:
 
@@ -35,9 +98,7 @@ go build -o env-wizard ./cmd/env-wizard
 ```
 
 On Windows, use `-o env-wizard.exe`. The resulting executable is standalone;
-end users do not need Go installed. For a published version, the prebuilt archive
-matching the operating system and architecture is the recommended installation
-method; verify it against the release's `SHA256SUMS` before use.
+end users do not need Go installed.
 
 ## Quick start
 
