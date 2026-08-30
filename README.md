@@ -190,5 +190,7 @@ and short commit without embedding a build timestamp.
 - [`PLAN.md`](PLAN.md) defines architecture and implementation order.
 - [`FUTURE.md`](FUTURE.md) preserves intentionally deferred ideas.
 - [`DEPENDENCIES.md`](DEPENDENCIES.md) records the dependency policy.
+- [`CONTRIBUTING.md`](CONTRIBUTING.md) explains the contribution workflow.
+- [`SECURITY.md`](SECURITY.md) explains private vulnerability reporting and support.
 - [`LICENSE`](LICENSE) contains the Apache-2.0 project license.
 - [`THIRD_PARTY_NOTICES`](THIRD_PARTY_NOTICES) contains dependency licenses and notices.
