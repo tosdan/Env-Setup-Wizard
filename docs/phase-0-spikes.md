@@ -38,7 +38,7 @@ Tested versions:
 - `github.com/compose-spec/compose-go/v2 v2.14.0`;
 - Docker Compose `v5.4.0`.
 
-The candidate encoder always emits a single-quoted value and escapes only an embedded apostrophe as `\'`. It rejects NUL, CR, and LF before rendering.
+The candidate encoder emitted a single-quoted value and escaped an embedded apostrophe as `\'`. It rejected NUL, CR, and LF before rendering. The implementation tests later exposed an additional edge case absent from the spike: an odd number of backslashes immediately before an apostrophe cannot round-trip with that representation through `compose-go`.
 
 The following 14 semantic values round-tripped through both compose-go and the actual `docker compose config` parser:
 
@@ -62,6 +62,6 @@ NUL, CR, and LF were rejected before rendering as required.
 
 `docker compose config --format json` represents a literal dollar from an env file as `$$`. This is output serialization, not a change to the runtime value. The experiment accounted for this canonical escaping when comparing Docker Compose output; the encoder itself must not double the original semantic value before single-quoting it.
 
-Implementation consequence: the v1 encoder can be small and deterministic—single-quote every accepted value, escape apostrophes, reject forbidden line characters, and verify semantic equality through compose-go. Docker Compose remains an integration oracle, with its canonical dollar escaping handled only in the test adapter.
+Implementation consequence: the v1 encoder is deterministic and normally uses single quotes. When that representation cannot round-trip, it falls back to double quotes while escaping backslashes, double quotes, and dollars. Every candidate is verified through `compose-go`; forbidden line characters are rejected. Docker Compose remains an integration oracle, with its canonical dollar escaping handled only in the test adapter.
 
 The encoder experiment cross-compiled successfully for all five v1 artifact targets. Native Docker Compose execution was performed on Windows amd64; other native operating systems remain CI responsibilities.

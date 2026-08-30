@@ -12,7 +12,7 @@ import (
 // ErrCanceled reports a user cancellation rather than an operational failure.
 var ErrCanceled = errors.New("operation canceled")
 
-var errNotImplemented = errors.New("template rendering not available yet")
+var errNotImplemented = errors.New("validation and question model not available yet")
 
 // Options contains the fully resolved command inputs for one workflow run.
 type Options struct {
@@ -23,9 +23,9 @@ type Options struct {
 
 // Run executes the env-wizard workflow.
 //
-// The implementation will be added incrementally during Phase 1. Keeping this
-// interface stable lets the command remain limited to argument parsing, path
-// resolution, and exit-code mapping.
+// The workflow is assembled incrementally behind this stable interface so the
+// command remains limited to argument parsing, path resolution, and exit-code
+// mapping.
 func Run(ctx context.Context, options Options) error {
 	if err := ctx.Err(); err != nil {
 		return err
@@ -34,8 +34,12 @@ func Run(ctx context.Context, options Options) error {
 	if err := projectfs.Preflight(options.TemplatePath, options.OutputPath); err != nil {
 		return fmt.Errorf("preflight paths: %w", err)
 	}
-	if _, err := dotenv.ParseTemplate(options.TemplatePath); err != nil {
+	document, err := dotenv.ParseTemplate(options.TemplatePath)
+	if err != nil {
 		return fmt.Errorf("parse template: %w", err)
+	}
+	if _, err := projectfs.RenderConfiguration(document); err != nil {
+		return fmt.Errorf("render configuration: %w", err)
 	}
 
 	return errNotImplemented
