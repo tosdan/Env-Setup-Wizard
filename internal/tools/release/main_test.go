@@ -187,12 +187,45 @@ func TestFinalizeReleaseWritesAndVerifiesAllChecksums(t *testing.T) {
 	if err := verifyChecksums(checksumPath, dist, names); err != nil {
 		t.Fatalf("verifyChecksums returned %v", err)
 	}
+	verifiedPath, err := verifyRelease(root, verifyOptions{
+		version:  "v1.0.0-rc.1",
+		inputDir: dist,
+	})
+	if err != nil {
+		t.Fatalf("verifyRelease returned %v", err)
+	}
+	if verifiedPath != checksumPath {
+		t.Fatalf("verifyRelease returned path %q, expected %q", verifiedPath, checksumPath)
+	}
 	content, err := os.ReadFile(checksumPath)
 	if err != nil {
 		t.Fatal(err)
 	}
 	if lines := strings.Count(string(content), "\n"); lines != len(releaseTargets) {
 		t.Fatalf("SHA256SUMS has %d rows, expected %d", lines, len(releaseTargets))
+	}
+	tamperedChecksums := append([]byte(nil), content...)
+	if tamperedChecksums[0] == '0' {
+		tamperedChecksums[0] = '1'
+	} else {
+		tamperedChecksums[0] = '0'
+	}
+	if err := os.WriteFile(checksumPath, tamperedChecksums, 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := verifyRelease(root, verifyOptions{version: "v1.0.0-rc.1", inputDir: dist}); err == nil {
+		t.Fatal("verifyRelease unexpectedly accepted a tampered checksum")
+	}
+	if err := os.WriteFile(checksumPath, content, 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	tamperedArchive := filepath.Join(dist, names[0])
+	if err := os.WriteFile(tamperedArchive, []byte("tampered"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := verifyRelease(root, verifyOptions{version: "v1.0.0-rc.1", inputDir: dist}); err == nil {
+		t.Fatal("verifyRelease unexpectedly accepted a tampered archive")
 	}
 }
 

@@ -61,6 +61,12 @@ type finalizeOptions struct {
 	outputDir string
 }
 
+type verifyOptions struct {
+	version      string
+	inputDir     string
+	checksumPath string
+}
+
 type archiveEntry struct {
 	name       string
 	content    []byte
@@ -77,7 +83,7 @@ func main() {
 
 func run(args []string, stdout, stderr io.Writer) error {
 	if len(args) == 0 {
-		return errors.New("expected build or finalize subcommand")
+		return errors.New("expected build, finalize, or verify subcommand")
 	}
 
 	root, err := findModuleRoot()
@@ -108,8 +114,19 @@ func run(args []string, stdout, stderr io.Writer) error {
 		}
 		fmt.Fprintf(stdout, "Created and verified %s\n", path)
 		return nil
+	case "verify":
+		options, err := parseVerifyOptions(args[1:], stderr)
+		if err != nil {
+			return err
+		}
+		checksumPath, err := verifyRelease(root, options)
+		if err != nil {
+			return err
+		}
+		fmt.Fprintf(stdout, "Verified release set using %s\n", checksumPath)
+		return nil
 	default:
-		return fmt.Errorf("unknown subcommand %q; expected build or finalize", args[0])
+		return fmt.Errorf("unknown subcommand %q; expected build, finalize, or verify", args[0])
 	}
 }
 
@@ -142,6 +159,22 @@ func parseFinalizeOptions(args []string, stderr io.Writer) (finalizeOptions, err
 	}
 	if flags.NArg() != 0 {
 		return finalizeOptions{}, fmt.Errorf("unexpected argument %q", flags.Arg(0))
+	}
+	return options, nil
+}
+
+func parseVerifyOptions(args []string, stderr io.Writer) (verifyOptions, error) {
+	flags := flag.NewFlagSet("release verify", flag.ContinueOnError)
+	flags.SetOutput(stderr)
+	options := verifyOptions{}
+	flags.StringVar(&options.version, "version", os.Getenv("RELEASE_VERSION"), "semantic version prefixed with v")
+	flags.StringVar(&options.inputDir, "input", defaultOutput, "directory containing all release archives")
+	flags.StringVar(&options.checksumPath, "checksums", "", "checksum manifest (defaults to SHA256SUMS in the input directory)")
+	if err := flags.Parse(args); err != nil {
+		return verifyOptions{}, err
+	}
+	if flags.NArg() != 0 {
+		return verifyOptions{}, fmt.Errorf("unexpected argument %q", flags.Arg(0))
 	}
 	return options, nil
 }
@@ -230,16 +263,10 @@ func finalizeRelease(root string, options finalizeOptions) (string, error) {
 		return "", fmt.Errorf("create checksum output directory %s: %w", outputDir, err)
 	}
 
-	names := make([]string, 0, len(releaseTargets))
-	for _, releaseTarget := range releaseTargets {
-		name := archiveName(options.version, releaseTarget)
-		path := filepath.Join(inputDir, name)
-		if err := verifyArchive(root, path, releaseTarget); err != nil {
-			return "", fmt.Errorf("verify %s: %w", name, err)
-		}
-		names = append(names, name)
+	names, err := verifyReleaseArchives(root, options.version, inputDir)
+	if err != nil {
+		return "", err
 	}
-	sort.Strings(names)
 
 	checksumPath := filepath.Join(outputDir, checksumName)
 	if _, err := os.Lstat(checksumPath); err == nil {
@@ -264,6 +291,44 @@ func finalizeRelease(root string, options finalizeOptions) (string, error) {
 		return "", fmt.Errorf("verify generated checksums: %w", err)
 	}
 	return checksumPath, nil
+}
+
+func verifyRelease(root string, options verifyOptions) (string, error) {
+	if err := validateVersion(options.version); err != nil {
+		return "", err
+	}
+	if options.inputDir == "" {
+		return "", errors.New("archive input directory must not be empty")
+	}
+	inputDir := resolveFromRoot(root, options.inputDir)
+	checksumPath := options.checksumPath
+	if checksumPath == "" {
+		checksumPath = filepath.Join(inputDir, checksumName)
+	} else {
+		checksumPath = resolveFromRoot(root, checksumPath)
+	}
+	names, err := verifyReleaseArchives(root, options.version, inputDir)
+	if err != nil {
+		return "", err
+	}
+	if err := verifyChecksums(checksumPath, inputDir, names); err != nil {
+		return "", fmt.Errorf("verify release checksums: %w", err)
+	}
+	return checksumPath, nil
+}
+
+func verifyReleaseArchives(root, version, inputDir string) ([]string, error) {
+	names := make([]string, 0, len(releaseTargets))
+	for _, releaseTarget := range releaseTargets {
+		name := archiveName(version, releaseTarget)
+		path := filepath.Join(inputDir, name)
+		if err := verifyArchive(root, path, releaseTarget); err != nil {
+			return nil, fmt.Errorf("verify %s: %w", name, err)
+		}
+		names = append(names, name)
+	}
+	sort.Strings(names)
+	return names, nil
 }
 
 func validateVersion(version string) error {

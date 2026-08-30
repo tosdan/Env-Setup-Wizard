@@ -35,8 +35,9 @@ go build -o env-wizard ./cmd/env-wizard
 ```
 
 On Windows, use `-o env-wizard.exe`. The resulting executable is standalone;
-end users do not need Go installed. Prebuilt release archives will become the
-recommended installation method once the Phase 9 release pipeline is complete.
+end users do not need Go installed. For a published version, the prebuilt archive
+matching the operating system and architecture is the recommended installation
+method; verify it against the release's `SHA256SUMS` before use.
 
 ## Quick start
 
@@ -185,9 +186,11 @@ go run ./cmd/env-wizard --version
 Local builds report `env-wizard dev`. Release builds inject the semantic version
 and short commit without embedding a build timestamp. The release artifact
 workflow builds and smoke-tests each supported target natively, checks archive
-names and contents, and emits a verified `SHA256SUMS`; it does not yet publish a
-GitHub Release. See [`CONTRIBUTING.md`](CONTRIBUTING.md) for the local dry-run
-commands.
+names and contents, and emits a verified `SHA256SUMS`. Manual runs stop there as
+dry runs. A pushed Semantic Versioning tag publishes those verified files as a
+GitHub Release; prerelease versions are marked accordingly and macOS remains
+identified as preview. See [`CONTRIBUTING.md`](CONTRIBUTING.md) for the release
+contract and local verification commands.
 
 ## Project documents
 

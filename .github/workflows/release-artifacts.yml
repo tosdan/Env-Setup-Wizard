@@ -19,8 +19,67 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
+  release-policy:
+    name: Release policy checks
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    env:
+      CGO_ENABLED: "0"
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Set up Go
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version: 1.27.x
+          check-latest: true
+          cache-dependency-path: go.sum
+
+      - name: Verify downloaded modules
+        run: go mod verify
+
+      - name: Run tests and vet
+        run: go test -count=1 ./... && go vet ./...
+
+      - name: Check module tidiness
+        run: go mod tidy -diff
+
+      - name: Check third-party licenses
+        run: go run ./internal/tools/licenses -check
+
+      - name: Install govulncheck
+        env:
+          GOBIN: ${{ runner.temp }}/go-tools
+        shell: bash
+        run: |
+          mkdir -p "$GOBIN"
+          go install golang.org/x/vuln/cmd/govulncheck@v1.7.0
+
+      - name: Scan every release target for vulnerabilities
+        env:
+          GOBIN: ${{ runner.temp }}/go-tools
+        shell: bash
+        run: |
+          targets=(
+            windows/amd64
+            linux/amd64
+            linux/arm64
+            darwin/amd64
+            darwin/arm64
+          )
+          for target in "${targets[@]}"; do
+            target_os="${target%/*}"
+            target_arch="${target#*/}"
+            echo "Scanning $target_os/$target_arch"
+            GOOS="$target_os" GOARCH="$target_arch" "$GOBIN/govulncheck" ./...
+          done
+
   build:
     name: Build ${{ matrix.platform.name }} (${{ matrix.platform.support }})
+    needs: release-policy
     runs-on: ${{ matrix.platform.runner }}
     timeout-minutes: 20
     strategy:
@@ -64,6 +123,9 @@ jobs:
 
       - name: Download modules
         run: go mod download
+
+      - name: Run native tests
+        run: go test -count=1 ./...
 
       - name: Build, smoke test, and package
         run: go run ./internal/tools/release build -output dist
@@ -112,3 +174,70 @@ jobs:
           path: dist/SHA256SUMS
           archive: false
           if-no-files-found: error
+
+  publish:
+    name: Publish GitHub Release
+    if: ${{ github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v') }}
+    needs: assemble
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      contents: write
+    env:
+      RELEASE_VERSION: ${{ github.ref_name }}
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Set up Go
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version: 1.27.x
+          check-latest: true
+          cache-dependency-path: go.sum
+
+      - name: Download canonical archives
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          pattern: env-wizard_*
+          path: dist
+          merge-multiple: true
+          skip-decompress: true
+
+      - name: Download checksums
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: SHA256SUMS
+          path: dist
+          skip-decompress: true
+
+      - name: Reverify release set before publication
+        run: go run ./internal/tools/release verify -input dist -checksums dist/SHA256SUMS
+
+      - name: Publish release from existing tag
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_NOTES: |
+            Windows amd64, Linux amd64, and Linux arm64 are stable v1 targets.
+            macOS amd64 and arm64 are preview pending a manual smoke test in a real macOS terminal.
+
+            Verify a downloaded archive against SHA256SUMS before use.
+        shell: bash
+        run: |
+          release_kind=(--latest)
+          if [[ "$RELEASE_VERSION" == *-* ]]; then
+            release_kind=(--prerelease --latest=false)
+          fi
+
+          gh release create "$RELEASE_VERSION" \
+            dist/env-wizard_*.zip \
+            dist/env-wizard_*.tar.gz \
+            dist/SHA256SUMS \
+            --verify-tag \
+            --fail-on-no-commits \
+            --generate-notes \
+            --notes "$RELEASE_NOTES" \
+            --title "Env Setup Wizard $RELEASE_VERSION" \
+            "${release_kind[@]}"

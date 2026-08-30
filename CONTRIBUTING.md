@@ -147,9 +147,22 @@ contents and generate the sorted checksum manifest with:
 go run ./internal/tools/release finalize -version v1.0.0-rc.1 -input dist -output dist
 ```
 
-The artifact workflow intentionally does not create a GitHub Release. Publishing
-is a separate release operation so a manually dispatched dry run cannot publish
-by accident.
+The workflow verifies an already assembled set independently with `verify` before
+publication:
+
+```text
+go run ./internal/tools/release verify -version v1.0.0-rc.1 -input dist -checksums dist/SHA256SUMS
+```
+
+A manual workflow run is always a dry run and only uploads workflow artifacts.
+Pushing a valid `vMAJOR.MINOR.PATCH` or `vMAJOR.MINOR.PATCH-prerelease` tag is the
+publication trigger. Before building, the workflow reruns tests, vet, module and
+license checks, and vulnerability scans for every release target; every build
+also reruns the tests on its native runner. Only the final job receives
+`contents: write`; it requires the remote tag to exist, reverifies every archive
+and checksum, then publishes all six files. Versions containing a prerelease
+suffix are marked as GitHub prereleases and are not marked latest. The release
+notes always identify both macOS targets as preview.
 
 By contributing, you agree that your contribution is licensed under the
 repository's [Apache License 2.0](LICENSE).
