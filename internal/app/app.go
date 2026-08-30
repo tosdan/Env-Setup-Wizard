@@ -19,8 +19,6 @@ import (
 // ErrCanceled reports a user cancellation rather than an operational failure.
 var ErrCanceled = errors.New("operation canceled")
 
-var errNotImplemented = errors.New("safe write not available yet")
-
 // Runtime contains process resources that are injected for testability.
 type Runtime struct {
 	Input       io.Reader
@@ -119,11 +117,25 @@ func Run(ctx context.Context, options Options) error {
 			return nil
 		}
 	}
-	if err := projectfs.Preflight(options.TemplatePath, options.OutputPath); err != nil {
-		return fmt.Errorf("revalidate paths before write: %w", err)
+	if err := ctx.Err(); err != nil {
+		return err
 	}
-
-	return errNotImplemented
+	backupPath, err := projectfs.SafeWrite(options.TemplatePath, options.OutputPath, candidate)
+	if err != nil {
+		return fmt.Errorf("write output safely: %w", err)
+	}
+	action := "Created"
+	if backupPath != "" {
+		action = "Updated"
+	}
+	message := fmt.Sprintf("%s %s.\n", action, filepath.Base(options.OutputPath))
+	if backupPath != "" {
+		message += fmt.Sprintf("Backup created: %s\n", backupPath)
+	}
+	if _, err := io.WriteString(terminal.Output, message); err != nil {
+		return fmt.Errorf("report successful write: %w", err)
+	}
+	return nil
 }
 
 func mapWizardError(action string, err error) error {

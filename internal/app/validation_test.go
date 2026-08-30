@@ -43,8 +43,11 @@ func TestRunAcceptsAllFixedTemplateBeforeInteractiveStage(t *testing.T) {
 			Interactive: true,
 		},
 	})
-	if err == nil || err.Error() != "safe write not available yet" {
-		t.Fatalf("Run() error = %v, want next-stage placeholder", err)
+	if err != nil {
+		t.Fatalf("Run() error = %v, want nil", err)
+	}
+	if got, readErr := os.ReadFile(filepath.Join(root, ".env")); readErr != nil || string(got) != "ONE=1\nTWO=2\n" {
+		t.Fatalf("generated fixed output = %q, error = %v", got, readErr)
 	}
 }
 
@@ -84,10 +87,10 @@ func TestRunCompletesWizardBeforeNextStage(t *testing.T) {
 			Interactive: true,
 		},
 	})
-	if err == nil || err.Error() != "safe write not available yet" {
-		t.Fatalf("Run() error = %v, want next-stage placeholder", err)
+	if err != nil {
+		t.Fatalf("Run() error = %v, want nil", err)
 	}
-	if _, statErr := os.Stat(filepath.Join(root, ".env")); !os.IsNotExist(statErr) {
-		t.Fatalf("output was created before summary and confirmation: %v", statErr)
+	if got, readErr := os.ReadFile(filepath.Join(root, ".env")); readErr != nil || string(got) != "KEY='new'\n" {
+		t.Fatalf("generated wizard output = %q, error = %v", got, readErr)
 	}
 }

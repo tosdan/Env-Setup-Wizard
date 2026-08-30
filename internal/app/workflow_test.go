@@ -32,7 +32,7 @@ func TestRunDeclinesCreationWithoutWriting(t *testing.T) {
 	assertOutputContains(t, output.String(), "Summary", "KEY  new", "Create .env?", "[Y/n]", "No changes made.")
 }
 
-func TestRunAcceptsCreationBeforeSafeWriteStage(t *testing.T) {
+func TestRunAcceptsCreationAndWritesOutput(t *testing.T) {
 	t.Setenv("TERM", "dumb")
 	_, templatePath, outputPath := workflowPaths(t, "KEY=old\n", nil)
 	var output bytes.Buffer
@@ -42,12 +42,12 @@ func TestRunAcceptsCreationBeforeSafeWriteStage(t *testing.T) {
 		OutputPath:   outputPath,
 		Runtime:      interactiveRuntime("new\n\n", &output),
 	})
-	if err == nil || err.Error() != "safe write not available yet" {
-		t.Fatalf("Run() error = %v, want safe-write placeholder", err)
+	if err != nil {
+		t.Fatalf("Run() error = %v, want nil", err)
 	}
-	if _, statErr := os.Stat(outputPath); !os.IsNotExist(statErr) {
-		t.Fatalf("output exists before safe-write stage: %v", statErr)
-	}
+	assertFileContent(t, outputPath, []byte("KEY='new'\n"))
+	assertOutputContains(t, output.String(), "Summary", "KEY  new", "Create .env?", "Created .env.")
+	assertNoWorkflowBackups(t, outputPath)
 }
 
 func TestRunUsesCompatibleExistingValueAndDeclinesOverwrite(t *testing.T) {
@@ -66,6 +66,7 @@ func TestRunUsesCompatibleExistingValueAndDeclinesOverwrite(t *testing.T) {
 	}
 	assertFileContent(t, outputPath, existingContent)
 	assertOutputContains(t, output.String(), "KEY  existing", "Overwrite existing .env?", "[y/N]", "No changes made.")
+	assertNoWorkflowBackups(t, outputPath)
 }
 
 func TestRunReportsByteIdenticalExistingOutputWithoutConfirmation(t *testing.T) {
@@ -85,6 +86,7 @@ func TestRunReportsByteIdenticalExistingOutputWithoutConfirmation(t *testing.T) 
 	}
 	assertFileContent(t, outputPath, existingContent)
 	assertOutputContains(t, output.String(), "Summary", "KEY  same", "No changes detected.")
+	assertNoWorkflowBackups(t, outputPath)
 	if strings.Contains(output.String(), "Overwrite existing") {
 		t.Fatalf("output = %q, want no confirmation for byte-identical result", output.String())
 	}
@@ -108,6 +110,26 @@ func TestRunTreatsSemanticOnlyEqualityAsOverwrite(t *testing.T) {
 	assertOutputContains(t, output.String(), "Overwrite existing .env?", "No changes made.")
 }
 
+func TestRunAcceptsOverwriteAndReportsBackup(t *testing.T) {
+	t.Setenv("TERM", "dumb")
+	existingContent := []byte("KEY=old\r\n")
+	_, templatePath, outputPath := workflowPaths(t, "KEY=template\n", existingContent)
+	var output bytes.Buffer
+
+	err := app.Run(context.Background(), app.Options{
+		TemplatePath: templatePath,
+		OutputPath:   outputPath,
+		Runtime:      interactiveRuntime("new\ny\n", &output),
+	})
+	if err != nil {
+		t.Fatalf("Run() error = %v, want nil", err)
+	}
+	assertFileContent(t, outputPath, []byte("KEY='new'\n"))
+	backupPath := singleWorkflowBackup(t, outputPath)
+	assertFileContent(t, backupPath, existingContent)
+	assertOutputContains(t, output.String(), "Overwrite existing .env?", "Updated .env.", "Backup created: "+backupPath)
+}
+
 func TestRunPreservesExistingSecretWithoutDisplayingIt(t *testing.T) {
 	t.Setenv("TERM", "dumb")
 	const secret = "do-not-show"
@@ -126,6 +148,7 @@ func TestRunPreservesExistingSecretWithoutDisplayingIt(t *testing.T) {
 	}
 	assertFileContent(t, outputPath, existingContent)
 	assertOutputContains(t, output.String(), "TOKEN  [set]", "No changes detected.")
+	assertNoWorkflowBackups(t, outputPath)
 	if strings.Contains(output.String(), secret) {
 		t.Fatalf("output leaked existing secret: %q", output.String())
 	}
@@ -151,7 +174,8 @@ func TestRunShowsRecoverableExistingValueDiagnostic(t *testing.T) {
 
 func TestRunForceSkipsConfirmationButNotSummaryOrNoOpDetection(t *testing.T) {
 	t.Setenv("TERM", "dumb")
-	_, templatePath, outputPath := workflowPaths(t, "KEY=old\n", nil)
+	existingContent := []byte("KEY=old\n")
+	_, templatePath, outputPath := workflowPaths(t, "KEY=template\n", existingContent)
 	var output bytes.Buffer
 
 	err := app.Run(context.Background(), app.Options{
@@ -160,11 +184,14 @@ func TestRunForceSkipsConfirmationButNotSummaryOrNoOpDetection(t *testing.T) {
 		Force:        true,
 		Runtime:      interactiveRuntime("new\n", &output),
 	})
-	if err == nil || err.Error() != "safe write not available yet" {
-		t.Fatalf("Run() error = %v, want safe-write placeholder", err)
+	if err != nil {
+		t.Fatalf("Run() error = %v, want nil", err)
 	}
-	assertOutputContains(t, output.String(), "Summary", "KEY  new")
-	if strings.Contains(output.String(), "Create .env?") {
+	assertFileContent(t, outputPath, []byte("KEY='new'\n"))
+	backupPath := singleWorkflowBackup(t, outputPath)
+	assertFileContent(t, backupPath, existingContent)
+	assertOutputContains(t, output.String(), "Summary", "KEY  new", "Updated .env.", "Backup created: "+backupPath)
+	if strings.Contains(output.String(), "Overwrite existing .env?") {
 		t.Fatalf("output = %q, want --force to skip only confirmation", output.String())
 	}
 }
@@ -214,7 +241,7 @@ func TestRunRevalidatesOutputAfterWizard(t *testing.T) {
 	if mutationErr != nil {
 		t.Skipf("symbolic links are unavailable: %v", mutationErr)
 	}
-	if err == nil || !strings.Contains(err.Error(), "revalidate paths before write") || !strings.Contains(err.Error(), "must not be a symbolic link") {
+	if err == nil || !strings.Contains(err.Error(), "write output safely") || !strings.Contains(err.Error(), "preflight safe write") || !strings.Contains(err.Error(), "must not be a symbolic link") {
 		t.Fatalf("Run() error = %v, want pre-write symlink rejection", err)
 	}
 	assertFileContent(t, protectedPath, protectedContent)
@@ -275,5 +302,28 @@ func assertFileContent(t *testing.T, path string, want []byte) {
 	}
 	if !bytes.Equal(got, want) {
 		t.Fatalf("file content = %q, want %q", got, want)
+	}
+}
+
+func singleWorkflowBackup(t *testing.T, outputPath string) string {
+	t.Helper()
+	backups, err := filepath.Glob(outputPath + ".backup-*")
+	if err != nil {
+		t.Fatalf("Glob backups: %v", err)
+	}
+	if len(backups) != 1 {
+		t.Fatalf("backups = %v, want exactly one", backups)
+	}
+	return backups[0]
+}
+
+func assertNoWorkflowBackups(t *testing.T, outputPath string) {
+	t.Helper()
+	backups, err := filepath.Glob(outputPath + ".backup-*")
+	if err != nil {
+		t.Fatalf("Glob backups: %v", err)
+	}
+	if len(backups) != 0 {
+		t.Fatalf("backups = %v, want none", backups)
 	}
 }
