@@ -39,7 +39,7 @@ func stageCandidateWith(
 	content []byte,
 	mode fs.FileMode,
 	dependencies stagingDependencies,
-) (stagedPath string, err error) {
+) (string, error) {
 	directory := filepath.Dir(outputPath)
 	base := filepath.Base(outputPath)
 	pattern := base + ".tmp-*"
@@ -51,39 +51,51 @@ func stageCandidateWith(
 		return "", fmt.Errorf("create staged output in %q: %w", directory, err)
 	}
 
-	temporaryPath := file.Name()
-	stagedPath = temporaryPath
+	stagedPath := file.Name()
+	if err := persistCreatedFile(file, content, mode, "staged output", dependencies.remove); err != nil {
+		return "", err
+	}
+	return stagedPath, nil
+}
+
+func persistCreatedFile(
+	file stagingFile,
+	content []byte,
+	mode fs.FileMode,
+	role string,
+	remove func(string) error,
+) (err error) {
+	path := file.Name()
 	closed := false
 	defer func() {
 		if !closed {
 			if closeErr := file.Close(); closeErr != nil {
-				err = errors.Join(err, fmt.Errorf("close staged output %q during cleanup: %w", temporaryPath, closeErr))
+				err = errors.Join(err, fmt.Errorf("close %s %q during cleanup: %w", role, path, closeErr))
 			}
 		}
 		if err != nil {
-			if removeErr := dependencies.remove(temporaryPath); removeErr != nil {
-				err = errors.Join(err, fmt.Errorf("remove staged output %q: %w", temporaryPath, removeErr))
+			if removeErr := remove(path); removeErr != nil {
+				err = errors.Join(err, fmt.Errorf("remove %s %q: %w", role, path, removeErr))
 			}
-			stagedPath = ""
 		}
 	}()
 
 	if err := file.Chmod(mode.Perm()); err != nil {
-		return "", fmt.Errorf("set staged output permissions %q: %w", temporaryPath, err)
+		return fmt.Errorf("set %s permissions %q: %w", role, path, err)
 	}
 	if written, writeErr := file.Write(content); writeErr != nil {
-		return "", fmt.Errorf("write staged output %q: %w", temporaryPath, writeErr)
+		return fmt.Errorf("write %s %q: %w", role, path, writeErr)
 	} else if written != len(content) {
-		return "", fmt.Errorf("write staged output %q: %w", temporaryPath, io.ErrShortWrite)
+		return fmt.Errorf("write %s %q: %w", role, path, io.ErrShortWrite)
 	}
 	if err := file.Sync(); err != nil {
-		return "", fmt.Errorf("sync staged output %q: %w", temporaryPath, err)
+		return fmt.Errorf("sync %s %q: %w", role, path, err)
 	}
 	if closeErr := file.Close(); closeErr != nil {
 		closed = true
-		return "", fmt.Errorf("close staged output %q: %w", temporaryPath, closeErr)
+		return fmt.Errorf("close %s %q: %w", role, path, closeErr)
 	}
 	closed = true
 
-	return stagedPath, nil
+	return nil
 }
