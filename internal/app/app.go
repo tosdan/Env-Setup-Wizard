@@ -32,10 +32,11 @@ type Runtime struct {
 
 // Options contains the fully resolved command inputs for one workflow run.
 type Options struct {
-	TemplatePath string
-	OutputPath   string
-	Force        bool
-	Runtime      *Runtime
+	TemplatePath        string
+	OutputPath          string
+	SuggestedOutputPath string
+	Force               bool
+	Runtime             *Runtime
 }
 
 // Run executes the env-wizard workflow.
@@ -48,12 +49,27 @@ func Run(ctx context.Context, options Options) error {
 		return err
 	}
 
-	if err := projectfs.Preflight(options.TemplatePath, options.OutputPath); err != nil {
+	if err := preflightInitialPaths(options); err != nil {
 		return fmt.Errorf("preflight paths: %w", err)
 	}
 	document, err := dotenv.ParseTemplate(options.TemplatePath)
 	if err != nil {
 		return fmt.Errorf("parse template: %w", err)
+	}
+	terminal := terminalFor(options.Runtime)
+	if options.SuggestedOutputPath != "" {
+		options.OutputPath, err = wizard.SelectOutputPath(
+			ctx,
+			options.SuggestedOutputPath,
+			options.OutputPath,
+			terminal,
+		)
+		if err != nil {
+			return mapWizardError("select output", err)
+		}
+		if err := projectfs.Preflight(options.TemplatePath, options.OutputPath); err != nil {
+			return fmt.Errorf("preflight selected paths: %w", err)
+		}
 	}
 	existing, err := dotenv.LoadExisting(options.OutputPath)
 	if err != nil {
@@ -67,7 +83,6 @@ func Run(ctx context.Context, options Options) error {
 	if err != nil {
 		return fmt.Errorf("build questions: %w", err)
 	}
-	terminal := terminalFor(options.Runtime)
 	answeredGroups, err := wizard.Run(ctx, groups, terminal)
 	if err != nil {
 		return mapWizardError("run wizard", err)
@@ -140,6 +155,13 @@ func Run(ctx context.Context, options Options) error {
 		return fmt.Errorf("report successful write: %w", err)
 	}
 	return nil
+}
+
+func preflightInitialPaths(options Options) error {
+	if options.SuggestedOutputPath != "" {
+		return projectfs.PreflightTemplate(options.TemplatePath)
+	}
+	return projectfs.Preflight(options.TemplatePath, options.OutputPath)
 }
 
 func mapWizardError(action string, err error) error {

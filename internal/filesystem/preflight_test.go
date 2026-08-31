@@ -36,6 +36,13 @@ func TestPreflightAcceptsValidPaths(t *testing.T) {
 	}
 }
 
+func TestPreflightTemplateDoesNotRequireAnOutputPath(t *testing.T) {
+	templatePath := writeTestFile(t, filepath.Join(t.TempDir(), ".env.example"))
+	if err := projectfs.PreflightTemplate(templatePath); err != nil {
+		t.Fatalf("PreflightTemplate() error = %v, want nil", err)
+	}
+}
+
 func TestPreflightAcceptsTemplateSymlink(t *testing.T) {
 	root := t.TempDir()
 	targetPath := writeTestFile(t, filepath.Join(root, "template-source"))

@@ -8,6 +8,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/tosdan/env-setup-wizard/internal/app"
 )
@@ -30,6 +31,7 @@ type parsedArguments struct {
 	templatePath     string
 	outputPath       string
 	templateExplicit bool
+	outputExplicit   bool
 	force            bool
 	showVersion      bool
 }
@@ -126,8 +128,11 @@ func parseArguments(args []string, stderr io.Writer) (parsedArguments, *int) {
 	visited := 0
 	flags.Visit(func(visitedFlag *flag.Flag) {
 		visited++
-		if visitedFlag.Name == "template" {
+		switch visitedFlag.Name {
+		case "template":
 			parsed.templateExplicit = true
+		case "output":
+			parsed.outputExplicit = true
 		}
 	})
 
@@ -161,10 +166,28 @@ func resolveOptions(cwd string, parsed parsedArguments) (app.Options, error) {
 	}
 
 	return app.Options{
-		TemplatePath: templatePath,
-		OutputPath:   outputPath,
-		Force:        parsed.force,
+		TemplatePath:        templatePath,
+		OutputPath:          outputPath,
+		SuggestedOutputPath: suggestedOutputPath(parsed, templatePath, outputPath),
+		Force:               parsed.force,
 	}, nil
+}
+
+func suggestedOutputPath(parsed parsedArguments, templatePath, outputPath string) string {
+	if !parsed.templateExplicit || parsed.outputExplicit {
+		return ""
+	}
+
+	base := filepath.Base(templatePath)
+	if !strings.HasSuffix(base, ".env.example") {
+		return ""
+	}
+
+	suggested := filepath.Join(filepath.Dir(templatePath), strings.TrimSuffix(base, ".example"))
+	if suggested == outputPath {
+		return ""
+	}
+	return suggested
 }
 
 func resolvePath(cwd, flagName, path string) (string, error) {

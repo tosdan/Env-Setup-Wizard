@@ -351,7 +351,12 @@ template = .env.example
 output   = .env
 ```
 
-Eseguendo il comando senza argomenti, entrambi i path vengono risolti rispetto alla cartella corrente del processo: il template è `<cwd>/.env.example` e l'output è `<cwd>/.env`. I flag `--template` e `--output` sostituiscono singolarmente questi default.
+Eseguendo il comando senza argomenti, entrambi i path vengono risolti rispetto
+alla cartella corrente del processo: il template è `<cwd>/.env.example` e
+l'output è `<cwd>/.env`. Se `--template` seleziona esplicitamente un file
+`*.env.example` e `--output` è omesso, il flusso propone come prima scelta il
+corrispondente `*.env` accanto al template e come alternativa `<cwd>/.env`.
+Un `--output` esplicito resta sempre definitivo e sopprime questa scelta.
 
 Flag v1:
 
@@ -364,7 +369,10 @@ Flag v1:
 
 Il wizard mostra sempre il riepilogo finale. Il risultato viene poi renderizzato in memoria e, se il target esistente è byte-identico, il comando stampa `No changes detected.`, restituisce `0` e termina senza conferma, backup o scrittura. Soltanto quando il contenuto è nuovo o differente, senza `--force` chiede una sola conferma: se il target non esiste usa `Create .env? [Y/n]`, con risposta predefinita positiva; se il target esiste usa `Overwrite existing .env? [y/N]`, con risposta predefinita negativa.
 
-`--force` salta questa conferma finale sia in creazione sia in sovrascrittura, ma non deve bypassare il wizard, il riepilogo, il rilevamento no-op, la validazione del template o le validazioni dei valori.
+`--force` salta questa conferma finale sia in creazione sia in sovrascrittura,
+ma non deve bypassare l'eventuale scelta della destinazione, il wizard, il
+riepilogo, il rilevamento no-op, la validazione del template o le validazioni
+dei valori.
 
 Prima del wizard, i path del template e dell'output vengono convertiti in path assoluti e normalizzati. Il template deve esistere e risolversi a un file regolare leggibile; può essere esso stesso un symlink. La directory padre dell'output deve già esistere ed essere una directory: la v1 non crea automaticamente directory mancanti.
 
@@ -864,7 +872,9 @@ Verificare inoltre che NUL, `CR` e `LF` vengano rifiutati prima del rendering.
 
 - template valido e invalido;
 - esecuzione senza argomenti con `.env.example` e `.env` nella cartella corrente;
-- override indipendente dei default tramite `--template` e `--output`;
+- override dei default tramite `--template` e `--output`, inclusa la scelta
+  interattiva del nome derivato quando solo un template `*.env.example` è
+  esplicito;
 - template e output che identificano lo stesso file;
 - template e output che identificano lo stesso file tramite symlink, hardlink o differenze di case;
 - template symlink verso un file regolare;
@@ -897,7 +907,8 @@ Verificare inoltre che NUL, `CR` e `LF` vengano rifiutati prima del rendering.
 - Ctrl+C o annullamento del wizard con exit code `130`;
 - argomenti invalidi con exit code `2` ed errori operativi con exit code `1`;
 - `--version` per build di release e build locale `dev`;
-- `--force` che mantiene wizard, validazioni e riepilogo ma salta la conferma finale;
+- `--force` che mantiene scelta della destinazione, wizard, validazioni e
+  riepilogo ma salta la conferma finale;
 - output esistente byte-identico con messaggio `No changes detected.`, exit code `0` e nessuna conferma, backup o scrittura, anche con `--force`;
 - output semanticamente equivalente ma byte-diverso che segue il normale flusso di overwrite e backup;
 - cancel e Ctrl+C senza scrittura;
@@ -954,7 +965,10 @@ La v1 è pronta quando:
 - tag, prerelease e output di `--version` rispettano il contratto Semantic Versioning; gli artifact non incorporano la data di compilazione;
 - `go.mod` dichiara `github.com/tosdan/env-setup-wizard` e gli artifact usano il nome `env-wizard`;
 - `go.mod` dichiara `go 1.26.0`, CI verifica Go 1.26 e 1.27 e gli artifact sono compilati con l'ultima patch Go 1.27 disponibile;
-- il comando senza argomenti usa `.env.example` e `.env` nella cartella corrente e permette di sovrascrivere indipendentemente entrambi i path tramite flag;
+- il comando senza argomenti usa `.env.example` e `.env` nella cartella corrente;
+  un template `*.env.example` esplicito senza `--output` propone il nome
+  derivato accanto al template oppure `.env` nella cartella corrente, mentre un
+  `--output` esplicito resta definitivo;
 - il comando usa un lookup dotenv controllato e non dipende dall'ambiente esterno del processo;
 - template validi con commenti, righe vuote, quote e annotation v1 vengono interpretati correttamente;
 - template invalidi vengono rifiutati prima del wizard con causa e linea quando applicabile; gli errori globali identificano il file;
@@ -979,7 +993,9 @@ La v1 è pronta quando:
 - la scrittura usa temporaneo, `Sync`, `Close` e replace e conserva ogni output precedente in un backup UTC univoco prima dell'overwrite;
 - su Unix i nuovi output e i backup usano `0600`, mentre un overwrite conserva i bit di permesso del target; ownership, gruppo, ACL e altri metadata non sono garantiti nella v1;
 - cancel, Ctrl+C ed errori non lasciano `.env` parziali;
-- il riepilogo viene sempre mostrato, la conferma finale distingue creazione e sovrascrittura e `--force` salta soltanto tale conferma;
+- il riepilogo viene sempre mostrato, la conferma finale distingue creazione e
+  sovrascrittura e `--force` salta soltanto tale conferma, non l'eventuale scelta
+  della destinazione;
 - un risultato byte-identico all'output esistente termina con `No changes detected.` senza conferma, backup o scrittura, anche con `--force`;
 - il comando rispetta gli exit code documentati, incluso `0` per il rifiuto finale e `130` per l'annullamento del wizard;
 - il comando rifiuta l'uso non-TTY e impedisce `--output` uguale a `--template`;

@@ -33,27 +33,13 @@ func (err *templateNotFoundError) Unwrap() []error {
 // rejects paths that identify the same file through spelling, symlinks, or
 // hardlinks.
 func Preflight(templatePath, outputPath string) error {
-	templatePath, err := checkedAbsolutePath("template", templatePath)
+	templatePath, templateInfo, err := inspectTemplate(templatePath)
 	if err != nil {
 		return err
 	}
 
 	outputPath, err = checkedAbsolutePath("output", outputPath)
 	if err != nil {
-		return err
-	}
-
-	templateInfo, err := os.Stat(templatePath)
-	if err != nil {
-		if errors.Is(err, os.ErrNotExist) {
-			return &templateNotFoundError{path: templatePath, cause: err}
-		}
-		return fmt.Errorf("inspect template %q: %w", templatePath, err)
-	}
-	if !templateInfo.Mode().IsRegular() {
-		return fmt.Errorf("template %q is not a regular file", templatePath)
-	}
-	if err := checkReadable(templatePath); err != nil {
 		return err
 	}
 
@@ -88,6 +74,36 @@ func Preflight(templatePath, outputPath string) error {
 	}
 
 	return nil
+}
+
+// PreflightTemplate verifies only that templatePath is an absolute, readable
+// regular file. It is used before an interactive output destination is chosen.
+func PreflightTemplate(templatePath string) error {
+	_, _, err := inspectTemplate(templatePath)
+	return err
+}
+
+func inspectTemplate(templatePath string) (string, os.FileInfo, error) {
+	templatePath, err := checkedAbsolutePath("template", templatePath)
+	if err != nil {
+		return "", nil, err
+	}
+
+	templateInfo, err := os.Stat(templatePath)
+	if err != nil {
+		if errors.Is(err, os.ErrNotExist) {
+			return "", nil, &templateNotFoundError{path: templatePath, cause: err}
+		}
+		return "", nil, fmt.Errorf("inspect template %q: %w", templatePath, err)
+	}
+	if !templateInfo.Mode().IsRegular() {
+		return "", nil, fmt.Errorf("template %q is not a regular file", templatePath)
+	}
+	if err := checkReadable(templatePath); err != nil {
+		return "", nil, err
+	}
+
+	return templatePath, templateInfo, nil
 }
 
 func checkedAbsolutePath(role, path string) (string, error) {

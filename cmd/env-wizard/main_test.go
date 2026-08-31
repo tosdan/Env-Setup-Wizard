@@ -65,6 +65,24 @@ func TestRunUsesPathsRelativeToCurrentDirectory(t *testing.T) {
 				Force:        true,
 			},
 		},
+		{
+			name: "named template suggests matching output",
+			args: []string{"--template", "typed-values.env.example"},
+			want: app.Options{
+				TemplatePath:        filepath.Join(cwd, "typed-values.env.example"),
+				OutputPath:          filepath.Join(cwd, ".env"),
+				SuggestedOutputPath: filepath.Join(cwd, "typed-values.env"),
+			},
+		},
+		{
+			name: "template in another directory suggests output beside it",
+			args: []string{"--template", filepath.Join("config", ".env.example")},
+			want: app.Options{
+				TemplatePath:        filepath.Join(cwd, "config", ".env.example"),
+				OutputPath:          filepath.Join(cwd, ".env"),
+				SuggestedOutputPath: filepath.Join(cwd, "config", ".env"),
+			},
+		},
 	}
 
 	for _, tt := range tests {

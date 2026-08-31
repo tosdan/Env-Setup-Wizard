@@ -11,19 +11,32 @@ env-wizard [--template PATH] [--output PATH] [--force]
 env-wizard --version
 ```
 
-Defaults are resolved independently against the current working directory:
+With no arguments, both defaults are resolved against the current working
+directory:
 
 ```text
 --template .env.example
 --output   .env
 ```
 
+When `--template` explicitly selects a path whose basename ends in
+`.env.example`, `--output` is omitted, and removing `.example` would produce a
+different path from the default output, the interactive flow asks the user to
+choose between:
+
+1. the derived `*.env` path beside the Template, selected by default;
+2. `.env` in the current working directory.
+
+An explicit `--output` is always authoritative and suppresses this choice.
+
 When the implicit `.env.example` does not exist, the command reports that it
 looked in the current directory and suggests either creating the file there or
 using `--template PATH`. A missing explicitly selected template retains its
 detailed path error.
 
-`--force` skips only the final create/overwrite confirmation. It never skips the wizard, summary, validation, no-op detection, backup, or TTY requirement.
+`--force` skips only the final create/overwrite confirmation. It never skips the
+output destination choice, wizard, summary, validation, no-op detection,
+backup, or TTY requirement.
 
 Exit codes:
 

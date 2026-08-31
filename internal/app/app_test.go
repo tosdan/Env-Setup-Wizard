@@ -75,6 +75,33 @@ func TestRunLoadsTemplateBeforeNextPipelineStage(t *testing.T) {
 	}
 }
 
+func TestRunRejectsInvalidNamedTemplateBeforeOutputSelection(t *testing.T) {
+	root := t.TempDir()
+	templatePath := filepath.Join(root, "typed-values.env.example")
+	if err := os.WriteFile(templatePath, []byte{0xff, 'K'}, 0o600); err != nil {
+		t.Fatalf("WriteFile(%q): %v", templatePath, err)
+	}
+	var output strings.Builder
+
+	err := app.Run(context.Background(), app.Options{
+		TemplatePath:        templatePath,
+		OutputPath:          filepath.Join(root, ".env"),
+		SuggestedOutputPath: filepath.Join(root, "typed-values.env"),
+		Runtime: &app.Runtime{
+			Input:       strings.NewReader("1\n"),
+			Output:      &output,
+			Interactive: true,
+		},
+	})
+
+	if err == nil || !strings.Contains(err.Error(), "parse template: decode template") {
+		t.Fatalf("Run() error = %v, want template decoding error", err)
+	}
+	if strings.Contains(output.String(), "Where should the configuration be saved?") {
+		t.Fatalf("output selection was shown for invalid template: %q", output.String())
+	}
+}
+
 func TestRunHonorsCanceledContextBeforeFilesystemAccess(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	cancel()

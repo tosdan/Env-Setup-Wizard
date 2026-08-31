@@ -11,6 +11,8 @@ packaging are in progress in Phase 9.
 ## Features
 
 - Run with no arguments: `.env.example` becomes `.env` in the current directory.
+- When a named `*.env.example` Template is selected, choose between its matching
+  `*.env` name and the project `.env` destination.
 - Add prompts, descriptions, types, closed selections, secrets, fixed values,
   and grouped pages directly to the template.
 - Reuse compatible values from an existing `.env` and recover interactively
@@ -111,7 +113,9 @@ directory, and run:
 env-wizard
 ```
 
-The default paths are independent and can be overridden:
+With no arguments, both default paths use the current directory. A named
+`*.env.example` passed through `--template` offers its matching `*.env` path as
+the first choice unless `--output` is also provided:
 
 ```text
 env-wizard --template config/app.env.example --output config/app.env
@@ -123,7 +127,8 @@ If the default `.env.example` is missing, the command reports the current
 directory and shows how to select a different template with `--template`.
 
 `--force` skips only the final create/overwrite confirmation. It does not skip
-the TTY requirement, wizard, validation, summary, no-op detection, or backups.
+the output destination choice, TTY requirement, wizard, validation, summary,
+no-op detection, or backups.
 
 ## Template example
 

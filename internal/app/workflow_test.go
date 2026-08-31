@@ -50,6 +50,50 @@ func TestRunAcceptsCreationAndWritesOutput(t *testing.T) {
 	assertNoWorkflowBackups(t, outputPath)
 }
 
+func TestRunLetsUserChooseOutputForNamedTemplate(t *testing.T) {
+	t.Setenv("TERM", "dumb")
+	tests := []struct {
+		name         string
+		selection    string
+		selectedName string
+		otherName    string
+	}{
+		{name: "matching template", selection: "1\n", selectedName: "typed-values.env", otherName: ".env"},
+		{name: "project default", selection: "2\n", selectedName: ".env", otherName: "typed-values.env"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			root := t.TempDir()
+			templatePath := filepath.Join(root, "typed-values.env.example")
+			if err := os.WriteFile(templatePath, []byte("KEY=old\n"), 0o600); err != nil {
+				t.Fatalf("WriteFile(%q): %v", templatePath, err)
+			}
+			var output bytes.Buffer
+			err := app.Run(context.Background(), app.Options{
+				TemplatePath:        templatePath,
+				OutputPath:          filepath.Join(root, ".env"),
+				SuggestedOutputPath: filepath.Join(root, "typed-values.env"),
+				Force:               true,
+				Runtime:             interactiveRuntime(tt.selection+"new\n", &output),
+			})
+			if err != nil {
+				t.Fatalf("Run() error = %v, want nil", err)
+			}
+			assertFileContent(t, filepath.Join(root, tt.selectedName), []byte("KEY='new'\n"))
+			if _, statErr := os.Stat(filepath.Join(root, tt.otherName)); !os.IsNotExist(statErr) {
+				t.Fatalf("unselected output %q exists: %v", tt.otherName, statErr)
+			}
+			assertOutputContains(
+				t,
+				output.String(),
+				"Where should the configuration be saved?",
+				"Created "+tt.selectedName+".",
+			)
+		})
+	}
+}
+
 func TestRunUsesCompatibleExistingValueAndDeclinesOverwrite(t *testing.T) {
 	t.Setenv("TERM", "dumb")
 	existingContent := []byte("KEY=existing\n")
