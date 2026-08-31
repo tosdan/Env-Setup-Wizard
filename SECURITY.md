@@ -6,11 +6,7 @@ they can be investigated before details are made public.
 
 ## Supported versions
 
-The project has not published its first release yet. Until then, `main` is a
-development branch rather than a supported production version, and fixes land
-there on a best-effort basis.
-
-After releases begin, the support policy is:
+Published versions follow this support policy:
 
 | Version | Security support |
 | --- | --- |

@@ -5,8 +5,8 @@ interactive setup wizard and writes a validated `.env` safely. It is designed
 for projects that want a friendly first-run configuration flow without adding a
 runtime, framework, or application-specific setup script.
 
-The core workflow is complete through **Phase 8**. Release hardening and
-packaging are in progress in Phase 9.
+The v1 scope, release hardening, documentation, and cross-platform packaging
+are complete.
 
 ## Features
 

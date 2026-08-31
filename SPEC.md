@@ -190,6 +190,9 @@ Cancellation, declined confirmation, parse failures, validation failures, and pr
 
 Stable v1 artifacts target Windows amd64, Linux amd64, and Linux arm64. macOS amd64 and arm64 artifacts are preview until a manual terminal smoke test complements native CI. Windows arm64 is not part of v1.
 
-Releases use Semantic Versioning, beginning with `v1.0.0-rc.N` and then `v1.0.0`. Release `--version` output is `env-wizard v1.0.0 (commit abc1234)`; local builds use `env-wizard dev`. Build timestamps are excluded for reproducibility.
+Releases use Semantic Versioning. Optional prereleases use `v1.0.0-rc.N`; the
+first stable release is `v1.0.0`. Release `--version` output is
+`env-wizard v1.0.0 (commit abc1234)`; local builds use `env-wizard dev`. Build
+timestamps are excluded for reproducibility.
 
 GitHub Releases contain `.zip` on Windows and `.tar.gz` on Linux/macOS, named `env-wizard_<version>_<os>_<arch>.<ext>`. Every archive includes the binary, README, Apache-2.0 `LICENSE`, and `THIRD_PARTY_NOTICES`; `SHA256SUMS` covers all archives.

@@ -1,5 +1,8 @@
 # Piano di implementazione — Env Setup Wizard
 
+**Stato:** ambito, implementazione, hardening, documentazione e packaging della
+v1 completati.
+
 ## 1. Obiettivo
 
 Realizzare `env-wizard`, una CLI Go cross-platform che generi e aggiorni un file `.env` a partire da `.env.example`, guidando l'utente tramite un wizard interattivo da terminale.
