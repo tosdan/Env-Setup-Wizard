@@ -117,6 +117,9 @@ env-wizard --force
 env-wizard --version
 ```
 
+If the default `.env.example` is missing, the command reports the current
+directory and shows how to select a different template with `--template`.
+
 `--force` skips only the final create/overwrite confirmation. It does not skip
 the TTY requirement, wizard, validation, summary, no-op detection, or backups.
 

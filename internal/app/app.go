@@ -16,8 +16,12 @@ import (
 	"github.com/tosdan/env-setup-wizard/internal/wizard"
 )
 
-// ErrCanceled reports a user cancellation rather than an operational failure.
-var ErrCanceled = errors.New("operation canceled")
+var (
+	// ErrCanceled reports a user cancellation rather than an operational failure.
+	ErrCanceled = errors.New("operation canceled")
+	// ErrTemplateNotFound reports that the selected template does not exist.
+	ErrTemplateNotFound = projectfs.ErrTemplateNotFound
+)
 
 // Runtime contains process resources that are injected for testability.
 type Runtime struct {

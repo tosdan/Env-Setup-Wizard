@@ -25,6 +25,9 @@ func TestRunPerformsPathPreflight(t *testing.T) {
 	if !strings.Contains(err.Error(), "preflight paths: inspect template") {
 		t.Fatalf("Run() error = %q, want contextual path preflight error", err)
 	}
+	if !errors.Is(err, app.ErrTemplateNotFound) {
+		t.Fatalf("Run() error = %v, want ErrTemplateNotFound classification", err)
+	}
 }
 
 func TestRunReachesNextPipelineStageAfterSuccessfulPreflight(t *testing.T) {

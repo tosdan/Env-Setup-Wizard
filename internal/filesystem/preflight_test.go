@@ -1,6 +1,7 @@
 package filesystem_test
 
 import (
+	"errors"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -75,6 +76,21 @@ func TestPreflightRejectsInvalidTemplate(t *testing.T) {
 			err := projectfs.Preflight(tt.template, filepath.Join(root, ".env"))
 			requireErrorContaining(t, err, tt.wantMessage)
 		})
+	}
+}
+
+func TestPreflightClassifiesMissingTemplate(t *testing.T) {
+	root := t.TempDir()
+	err := projectfs.Preflight(
+		filepath.Join(root, "missing.env.example"),
+		filepath.Join(root, ".env"),
+	)
+
+	if !errors.Is(err, projectfs.ErrTemplateNotFound) {
+		t.Fatalf("Preflight() error = %v, want ErrTemplateNotFound", err)
+	}
+	if !errors.Is(err, os.ErrNotExist) {
+		t.Fatalf("Preflight() error = %v, want it to preserve os.ErrNotExist", err)
 	}
 }
 

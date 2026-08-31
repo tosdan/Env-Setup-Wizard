@@ -18,6 +18,11 @@ Defaults are resolved independently against the current working directory:
 --output   .env
 ```
 
+When the implicit `.env.example` does not exist, the command reports that it
+looked in the current directory and suggests either creating the file there or
+using `--template PATH`. A missing explicitly selected template retains its
+detailed path error.
+
 `--force` skips only the final create/overwrite confirmation. It never skips the wizard, summary, validation, no-op detection, backup, or TTY requirement.
 
 Exit codes:

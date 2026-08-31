@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"errors"
+	"fmt"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -261,6 +262,57 @@ func TestRunMapsApplicationErrorsToExitCodes(t *testing.T) {
 				t.Fatalf("stderr = %q, want %q", got, tt.wantStderr)
 			}
 		})
+	}
+}
+
+func TestRunExplainsMissingDefaultTemplate(t *testing.T) {
+	cwd := t.TempDir()
+	stderr := &bytes.Buffer{}
+	code := run(
+		context.Background(),
+		nil,
+		fixedWorkingDirectory(cwd),
+		&bytes.Buffer{},
+		stderr,
+		func(context.Context, app.Options) error {
+			return fmt.Errorf("preflight paths: %w", app.ErrTemplateNotFound)
+		},
+	)
+
+	if code != exitFailure {
+		t.Fatalf("run() exit code = %d, want %d", code, exitFailure)
+	}
+	want := fmt.Sprintf(
+		"env-wizard: no .env.example template found in the current directory:\n  %s\n\n"+
+			"Create a .env.example file there, or specify another template:\n"+
+			"  env-wizard --template path/to/file.env.example\n",
+		cwd,
+	)
+	if got := stderr.String(); got != want {
+		t.Fatalf("stderr = %q, want %q", got, want)
+	}
+}
+
+func TestRunPreservesDetailsForExplicitMissingTemplate(t *testing.T) {
+	cwd := t.TempDir()
+	stderr := &bytes.Buffer{}
+	detail := "preflight paths: inspect template custom.env.example: file not found"
+	code := run(
+		context.Background(),
+		[]string{"--template", "custom.env.example"},
+		fixedWorkingDirectory(cwd),
+		&bytes.Buffer{},
+		stderr,
+		func(context.Context, app.Options) error {
+			return fmt.Errorf("%s: %w", detail, app.ErrTemplateNotFound)
+		},
+	)
+
+	if code != exitFailure {
+		t.Fatalf("run() exit code = %d, want %d", code, exitFailure)
+	}
+	if got, want := stderr.String(), "env-wizard: "+detail+": template not found\n"; got != want {
+		t.Fatalf("stderr = %q, want %q", got, want)
 	}
 }
 

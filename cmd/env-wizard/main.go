@@ -27,10 +27,11 @@ const (
 type applicationRunner func(context.Context, app.Options) error
 
 type parsedArguments struct {
-	templatePath string
-	outputPath   string
-	force        bool
-	showVersion  bool
+	templatePath     string
+	outputPath       string
+	templateExplicit bool
+	force            bool
+	showVersion      bool
 }
 
 func main() {
@@ -78,6 +79,10 @@ func run(
 		if errors.Is(err, app.ErrCanceled) || errors.Is(err, context.Canceled) {
 			return exitCanceled
 		}
+		if !parsed.templateExplicit && errors.Is(err, app.ErrTemplateNotFound) {
+			writeMissingDefaultTemplate(stderr, cwd)
+			return exitFailure
+		}
 
 		fmt.Fprintf(stderr, "env-wizard: %v\n", err)
 		return exitFailure
@@ -118,11 +123,15 @@ func parseArguments(args []string, stderr io.Writer) (parsedArguments, *int) {
 		return parsedArguments{}, &result
 	}
 
+	visited := 0
+	flags.Visit(func(visitedFlag *flag.Flag) {
+		visited++
+		if visitedFlag.Name == "template" {
+			parsed.templateExplicit = true
+		}
+	})
+
 	if parsed.showVersion {
-		visited := 0
-		flags.Visit(func(*flag.Flag) {
-			visited++
-		})
 		if visited != 1 {
 			fmt.Fprintln(stderr, "env-wizard: --version cannot be combined with other flags")
 			flags.Usage()
@@ -132,6 +141,12 @@ func parseArguments(args []string, stderr io.Writer) (parsedArguments, *int) {
 	}
 
 	return parsed, nil
+}
+
+func writeMissingDefaultTemplate(stderr io.Writer, cwd string) {
+	fmt.Fprintf(stderr, "env-wizard: no .env.example template found in the current directory:\n  %s\n\n", cwd)
+	fmt.Fprintln(stderr, "Create a .env.example file there, or specify another template:")
+	fmt.Fprintln(stderr, "  env-wizard --template path/to/file.env.example")
 }
 
 func resolveOptions(cwd string, parsed parsedArguments) (app.Options, error) {

@@ -1,12 +1,29 @@
 package filesystem
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
 	"runtime"
 	"strings"
 )
+
+// ErrTemplateNotFound identifies a template path that does not exist.
+var ErrTemplateNotFound = errors.New("template not found")
+
+type templateNotFoundError struct {
+	path  string
+	cause error
+}
+
+func (err *templateNotFoundError) Error() string {
+	return fmt.Sprintf("inspect template %q: %v", err.path, err.cause)
+}
+
+func (err *templateNotFoundError) Unwrap() []error {
+	return []error{ErrTemplateNotFound, err.cause}
+}
 
 // Preflight verifies that templatePath can be read safely and that outputPath
 // is a valid destination. Both paths must already be absolute.
@@ -28,6 +45,9 @@ func Preflight(templatePath, outputPath string) error {
 
 	templateInfo, err := os.Stat(templatePath)
 	if err != nil {
+		if errors.Is(err, os.ErrNotExist) {
+			return &templateNotFoundError{path: templatePath, cause: err}
+		}
 		return fmt.Errorf("inspect template %q: %w", templatePath, err)
 	}
 	if !templateInfo.Mode().IsRegular() {
