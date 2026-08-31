@@ -39,7 +39,7 @@ func ConfirmWrite(
 			Title(fmt.Sprintf("%s %s?", action, target)).
 			Value(&confirmed),
 	))
-	if err := form.
+	if err := applyEnvWizardTheme(form).
 		WithInput(terminal.Input).
 		WithOutput(terminal.Output).
 		RunWithContext(ctx); err != nil {

@@ -60,7 +60,7 @@ func Run(
 	if err != nil {
 		return nil, err
 	}
-	err = form.
+	err = applyEnvWizardTheme(form).
 		WithInput(terminal.Input).
 		WithOutput(terminal.Output).
 		RunWithContext(ctx)

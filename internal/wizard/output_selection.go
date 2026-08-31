@@ -43,7 +43,7 @@ func SelectOutputPath(
 			).
 			Value(&selected),
 	))
-	if err := form.
+	if err := applyEnvWizardTheme(form).
 		WithInput(terminal.Input).
 		WithOutput(terminal.Output).
 		RunWithContext(ctx); err != nil {
