@@ -131,13 +131,19 @@ bool                -> Confirm
 options             -> Select
 ```
 
-Invalid input keeps the user on the current field. The summary is always shown and is grouped like the wizard. Normal values are visible; secret values appear only as `[set]` or `[not set]`.
+Invalid input keeps the user on the current field. The summary is always shown
+and is grouped like the wizard. A variable with `@prompt` is labeled as
+`Prompt text (VARIABLE_KEY)`; otherwise only its key is shown. Normal values are
+visible; secret values appear only as `[set]` or `[not set]`.
 
 After rendering the candidate in memory, a byte-identical existing output terminates successfully without confirmation, backup, or write, including with `--force`. Otherwise creation asks `Create .env? [Y/n]` and overwrite asks `Overwrite existing .env? [y/N]` unless `--force` is present.
 
 ## Rendering
 
-Annotations are omitted from generated output. Normal comments, blank lines, variable order, EOL style, and final-newline state come from the template. Obsolete existing variables are not copied.
+Annotations, normal comments, blank lines, variable order, EOL style, and
+final-newline state are preserved in their original Template positions. The
+writer never reorganizes variables by section. Obsolete existing variables are
+not copied.
 
 Modified values use one canonical Compose-compatible encoding. For every accepted value, parsing `KEY=<encoded>` through compose-go with the controlled lookup must reproduce the original value exactly. `$VAR`, `${VAR}`, and `$$` remain identical literal sequences. NUL, CR, and LF are rejected before rendering.
 

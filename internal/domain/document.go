@@ -94,7 +94,7 @@ type Annotations struct {
 }
 
 // AnnotationLine is a distinguished comment line with its parsed name and
-// optional value. It remains a Node so the writer can omit it deliberately.
+// optional value. It remains a Node so the writer preserves its source position.
 type AnnotationLine struct {
 	Name  AnnotationName
 	Value string

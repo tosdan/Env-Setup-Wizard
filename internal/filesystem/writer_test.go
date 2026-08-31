@@ -46,8 +46,9 @@ func TestRenderConfigurationMatchesGoldenFile(t *testing.T) {
 	if !bytes.Equal(got, want) {
 		t.Errorf("RenderConfiguration() =\n%s\nwant golden output:\n%s", got, want)
 	}
-	if bytes.Contains(got, []byte("# @")) {
-		t.Errorf("RenderConfiguration() retained annotation lines: %q", got)
+	if !bytes.Contains(got, []byte("# @prompt Public name")) ||
+		!bytes.Contains(got, []byte("# @fixed")) {
+		t.Errorf("RenderConfiguration() omitted annotation lines: %q", got)
 	}
 
 	values, err := composedotenv.ParseWithLookup(
@@ -79,12 +80,12 @@ func TestRenderersPreserveLineEndingsAndFinalNewlineState(t *testing.T) {
 		{
 			name: "CRLF without final newline",
 			in:   []byte("# header\r\n# @prompt Name\r\nNAME=value"),
-			want: []byte("# header\r\nNAME=value"),
+			want: []byte("# header\r\n# @prompt Name\r\nNAME=value"),
 		},
 		{
 			name: "LF with final newline",
 			in:   []byte("# @section App\nNAME=value\n"),
-			want: []byte("NAME=value\n"),
+			want: []byte("# @section App\nNAME=value\n"),
 		},
 	}
 
@@ -106,6 +107,33 @@ func TestRenderersPreserveLineEndingsAndFinalNewlineState(t *testing.T) {
 				t.Errorf("RenderConfiguration() = %q, want %q", got, tt.want)
 			}
 		})
+	}
+}
+
+func TestRenderConfigurationPreservesReopenedSectionsInSourceOrder(t *testing.T) {
+	input := []byte(strings.Join([]string{
+		"# @section Application",
+		"# @prompt Public name",
+		"NAME=demo",
+		"# @section Database",
+		"PORT=5432",
+		"# @section Application",
+		"# This comment belongs to the URL below.",
+		"URL=http://localhost",
+		"",
+	}, "\n"))
+	path := writeFilesystemTemplate(t, input)
+	document, err := dotenv.ParseTemplate(path)
+	if err != nil {
+		t.Fatalf("ParseTemplate() error = %v, want nil", err)
+	}
+
+	got, err := projectfs.RenderConfiguration(document)
+	if err != nil {
+		t.Fatalf("RenderConfiguration() error = %v, want nil", err)
+	}
+	if !bytes.Equal(got, input) {
+		t.Fatalf("RenderConfiguration() = %q, want source order %q", got, input)
 	}
 }
 

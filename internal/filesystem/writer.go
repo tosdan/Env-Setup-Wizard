@@ -20,8 +20,8 @@ func RenderTemplate(document domain.Document) []byte {
 	return joinDocumentLines(lines, document)
 }
 
-// RenderConfiguration produces a Generated configuration in memory. It omits
-// annotation lines and validates every resolved value before returning bytes.
+// RenderConfiguration produces a Generated configuration in memory. It keeps
+// the Template structure and comments intact while validating resolved values.
 func RenderConfiguration(document domain.Document) ([]byte, error) {
 	if document.LineEnding != domain.LineEndingLF && document.LineEnding != domain.LineEndingCRLF {
 		return nil, errors.New("render configuration: document has an unsupported line ending")
@@ -30,8 +30,6 @@ func RenderConfiguration(document domain.Document) ([]byte, error) {
 	lines := make([]string, 0, len(document.Nodes))
 	for _, node := range document.Nodes {
 		switch node := node.(type) {
-		case domain.AnnotationLine:
-			continue
 		case domain.Variable:
 			line, err := renderVariable(node)
 			if err != nil {

@@ -46,7 +46,7 @@ func TestRunAcceptsAllFixedTemplateBeforeInteractiveStage(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Run() error = %v, want nil", err)
 	}
-	if got, readErr := os.ReadFile(filepath.Join(root, ".env")); readErr != nil || string(got) != "ONE=1\nTWO=2\n" {
+	if got, readErr := os.ReadFile(filepath.Join(root, ".env")); readErr != nil || string(got) != "# @fixed\nONE=1\n# @fixed\nTWO=2\n" {
 		t.Fatalf("generated fixed output = %q, error = %v", got, readErr)
 	}
 }
@@ -90,7 +90,7 @@ func TestRunCompletesWizardBeforeNextStage(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Run() error = %v, want nil", err)
 	}
-	if got, readErr := os.ReadFile(filepath.Join(root, ".env")); readErr != nil || string(got) != "KEY='new'\n" {
+	if got, readErr := os.ReadFile(filepath.Join(root, ".env")); readErr != nil || string(got) != "# @required\nKEY='new'\n" {
 		t.Fatalf("generated wizard output = %q, error = %v", got, readErr)
 	}
 }

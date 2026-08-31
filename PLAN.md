@@ -64,7 +64,9 @@ Regole:
 - una section che non contiene alcuna variabile configurabile non genera una pagina vuota;
 - il gruppo implicito `Configuration` può essere riaperto esplicitamente con `@section Configuration`.
 
-Le annotation sono metadati del wizard e vengono rimosse dal file `.env` generato. I commenti che non seguono la sintassi `# @...` vengono invece conservati.
+Le annotation sono metadati del wizard, ma restano commenti dotenv utili anche
+per chi modifica manualmente il file: annotation e commenti normali vengono
+quindi conservati nel `.env` generato nelle posizioni originali.
 
 Un template valido deve definire almeno una variabile. Un file vuoto o composto soltanto da commenti, annotation di section e righe vuote è un errore di configurazione prima del wizard. Un template che contiene variabili ma le marca tutte `@fixed` è invece valido: non genera domande o pagine vuote, salta l'esecuzione del form e prosegue con riepilogo, rendering, rilevamento no-op, conferma e scrittura. Anche in questo caso la v1 continua a richiedere un terminale e `--force` non abilita l'uso non interattivo.
 
@@ -504,7 +506,10 @@ La validazione di `@required` viene applicata al valore finale dopo il merge e d
 
 ### 5.5 Summary e secret handling
 
-Il riepilogo deve essere raggruppato usando le stesse section unite del wizard e deve mostrare i valori normali. Per i secret deve mostrare esclusivamente:
+Il riepilogo deve essere raggruppato usando le stesse section unite del wizard e
+deve mostrare i valori normali. Quando esiste `@prompt`, l'etichetta usa
+`Prompt descrittivo (VARIABLE_KEY)`; senza `@prompt` usa soltanto la chiave. Per
+i secret deve mostrare esclusivamente il relativo stato, per esempio:
 
 ```text
 DB_PASSWORD    [set]
@@ -525,8 +530,7 @@ La conferma finale è unica: propone la creazione con default positivo quando il
 Il writer deve:
 
 - aggiornare soltanto le variabili del documento;
-- mantenere ordine, commenti normali, righe vuote e line ending;
-- rimuovere dall'output le annotation del wizard;
+- mantenere ordine, commenti normali, annotation, righe vuote e line ending;
 - non copiare variabili obsolete del vecchio `.env`;
 - usare l'encoder canonico per i valori modificati;
 - produrre un file che `compose-go/v2/dotenv` riesca a rileggere con gli stessi valori.
@@ -534,7 +538,7 @@ Il writer deve:
 Sono distinti tre contratti di rendering:
 
 1. `parse → render` senza trasformazioni deve essere byte-identico alla rappresentazione normalizzata del template valido; l'eventuale BOM iniziale è l'unica differenza intenzionale;
-2. `generate .env` rimuove le annotation e può usare l'encoding canonico per le variabili aggiornate;
+2. `generate .env` preserva le annotation nelle posizioni originali e può usare l'encoding canonico per le variabili aggiornate;
 3. il risultato finale deve essere semanticamente rileggibile con `compose-go`, anche quando non è byte-identico al template.
 
 ---
@@ -643,14 +647,14 @@ Attività:
 3. Rifiutare valori contenenti NUL, `CR` o `LF`.
 4. Validare ogni encoding riparsando il risultato con `compose-go` e coprire nello spike anche Docker Compose reale.
 5. Implementare aggiornamento delle variabili nel modello.
-6. Rimuovere le annotation dall'output mantenendo commenti normali.
+6. Preservare annotation e commenti normali nelle posizioni originali.
 7. Preservare ordine, righe vuote, section header e line ending.
 8. Implementare golden test e table-driven test del writer.
 
 **Milestone:**
 
 ```text
-parse → update values → remove annotations → render
+parse → update values → preserve document structure → render
 ```
 
 produce un `.env` valido e rileggibile con i valori attesi.
@@ -970,7 +974,7 @@ La v1 è pronta quando:
 - `@type int` usa interi decimali `int64` e `@type port` usa cifre nell'intervallo `1..65535`, con comportamento indipendente dalla piattaforma e senza normalizzazione testuale;
 - `@type url` accetta URI assoluti generici, rifiuta riferimenti relativi e non normalizza né verifica in rete i valori;
 - i secret non compaiono in summary, log o errori e `.env` viene documentato come non-secret-store;
-- il writer rimuove le annotation e conserva la struttura utile del documento;
+- il writer conserva annotation, commenti e struttura originale del documento;
 - l'output supera i test di round-trip con `compose-go`;
 - la scrittura usa temporaneo, `Sync`, `Close` e replace e conserva ogni output precedente in un backup UTC univoco prima dell'overwrite;
 - su Unix i nuovi output e i backup usano `0600`, mentre un overwrite conserva i bit di permesso del target; ownership, gruppo, ACL e altri metadata non sono garantiti nella v1;

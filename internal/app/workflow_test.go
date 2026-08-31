@@ -133,7 +133,7 @@ func TestRunAcceptsOverwriteAndReportsBackup(t *testing.T) {
 func TestRunPreservesExistingSecretWithoutDisplayingIt(t *testing.T) {
 	t.Setenv("TERM", "dumb")
 	const secret = "do-not-show"
-	existingContent := []byte("TOKEN='" + secret + "'\n")
+	existingContent := []byte("# @secret\nTOKEN='" + secret + "'\n")
 	_, templatePath, outputPath := workflowPaths(t, "# @secret\nTOKEN=template\n", existingContent)
 	var output bytes.Buffer
 

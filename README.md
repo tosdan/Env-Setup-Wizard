@@ -15,7 +15,9 @@ packaging are in progress in Phase 9.
   and grouped pages directly to the template.
 - Reuse compatible values from an existing `.env` and recover interactively
   when a value is no longer compatible with the template.
-- Show a grouped summary while rendering secrets only as `[set]` or `[not set]`.
+- Show descriptive prompts and variable keys in a grouped summary while
+  rendering secrets only as `[set]` or `[not set]`.
+- Preserve normal comments and wizard annotations in their original positions.
 - Detect byte-identical reruns without confirming, writing, or creating a backup.
 - Write through a synced temporary file and atomically replace the destination.
 - Create a byte-identical timestamped backup before every effective overwrite.
