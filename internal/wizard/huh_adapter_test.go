@@ -82,6 +82,12 @@ func TestRunCollectsAndValidatesAnswers(t *testing.T) {
 	if !strings.Contains(output.String(), "decimal port number") {
 		t.Fatalf("wizard output = %q, want validation diagnostic", output.String())
 	}
+	if !strings.Contains(output.String(), "Name [required]") {
+		t.Fatalf("wizard output = %q, want required field visibly labeled", output.String())
+	}
+	if strings.Contains(output.String(), "Port [required]") {
+		t.Fatalf("wizard output = %q, want optional field without required label", output.String())
+	}
 	if !strings.Contains(output.String(), issue.Message) {
 		t.Fatalf("wizard output = %q, want existing-value diagnostic", output.String())
 	}

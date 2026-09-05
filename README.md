@@ -183,7 +183,7 @@ Annotations are comment lines in the form `# @name value`.
 | --- | --- |
 | `@prompt value` | Shows `Prompt text (VARIABLE_KEY)` in questions and summary; without a distinct prompt, shows only the key. |
 | `@description value` | Adds help text to the field. |
-| `@required` | Rejects an empty or whitespace-only final value. |
+| `@required` | Marks the question title with `[required]` and rejects an empty or whitespace-only final value. |
 | `@secret` | Masks input and redacts the value from summaries and diagnostics. |
 | `@type string\|int\|bool\|port\|url` | Selects validation and field behavior; the default is `string`. |
 | `@options v1,v2,...` | Creates a closed, case-sensitive selection. |

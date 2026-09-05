@@ -128,12 +128,16 @@ func fieldForQuestion(question *domain.Question) (*answerBinding, huh.Field, err
 	validateText := func(value string) error {
 		return binding.validateText(value)
 	}
+	title := question.Prompt
+	if question.Required {
+		title += " [required]"
+	}
 
 	switch question.Kind {
 	case domain.QuestionKindInput:
 		field := huh.NewInput().
 			Key(question.Key).
-			Title(question.Prompt).
+			Title(title).
 			Description(question.Description).
 			Value(&binding.textValue).
 			Validate(validateText)
@@ -148,7 +152,7 @@ func fieldForQuestion(question *domain.Question) (*answerBinding, huh.Field, err
 	case domain.QuestionKindSelect:
 		field := huh.NewSelect[string]().
 			Key(question.Key).
-			Title(question.Prompt).
+			Title(title).
 			Description(question.Description).
 			Options(huh.NewOptions(question.Options...)...).
 			Value(&binding.textValue).
@@ -166,7 +170,7 @@ func fieldForQuestion(question *domain.Question) (*answerBinding, huh.Field, err
 		}
 		field := huh.NewConfirm().
 			Key(question.Key).
-			Title(question.Prompt).
+			Title(title).
 			Description(question.Description).
 			Value(&binding.boolValue).
 			Validate(validateBool)

@@ -32,7 +32,7 @@ Il vocabolario della prima release è congelato alle seguenti nove annotation:
 | ------------------------------------ | ----------------------------------------------------------------------------------------------- |
 | `@prompt valore`                     | Mostra `Prompt descrittivo (VARIABLE_KEY)` nella domanda e nel riepilogo. Se assente o uguale alla chiave, mostra solo la chiave. |
 | `@description valore`                | Aggiunge una descrizione al campo.                                                              |
-| `@required`                          | Rifiuta valori vuoti o composti solo da whitespace.                                             |
+| `@required`                          | Mostra `[required]` nel titolo della domanda e rifiuta valori vuoti o composti solo da whitespace. |
 | `@secret`                            | Usa input mascherato (`EchoModePassword`) e nasconde il valore nei summary e nella diagnostica. |
 | `@type string\|int\|bool\|port\|url` | Seleziona semantica, widget e validazione. `string` è il default.                               |
 | `@options v1,v2,...`                 | Trasforma il campo in una selezione chiusa. Il default deve appartenere alle option.            |

@@ -84,7 +84,7 @@ Annotations use comment lines of the form `# @name value`. Field annotations bin
 | --- | --- |
 | `@prompt value` | Descriptive question label followed by the variable key in parentheses; without a distinct prompt, show only the key |
 | `@description value` | Additional field help |
-| `@required` | Reject empty or whitespace-only final values |
+| `@required` | Mark the question title with `[required]` and reject empty or whitespace-only final values |
 | `@secret` | Mask input and redact summary, logs, diagnostics, and errors |
 | `@type string\|int\|bool\|port\|url` | Select validation and field kind; default is `string` |
 | `@options v1,v2,...` | Closed, case-sensitive selection |
@@ -149,6 +149,11 @@ and is grouped like the wizard. In both questions and summary, a variable with
 `@prompt` is labeled as `Prompt text (VARIABLE_KEY)`; if the prompt is absent or
 equals the key, only its key is shown. Normal values are
 visible; secret values appear only as `[set]` or `[not set]`.
+
+Questions marked `@required` append ` [required]` to their title from the first
+display, including when a default or existing value is present. This marker
+appears for every question kind and does not depend on color or a validation
+error. Optional questions have no such marker.
 
 After rendering the candidate in memory, a byte-identical existing output terminates successfully without confirmation, backup, or write, including with `--force`. Otherwise creation asks `Create .env? [Y/n]` and overwrite asks `Overwrite existing .env? [y/N]` unless `--force` is present.
 
