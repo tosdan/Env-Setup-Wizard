@@ -181,7 +181,7 @@ Annotations are comment lines in the form `# @name value`.
 
 | Annotation | Effect |
 | --- | --- |
-| `@prompt value` | Sets the question label; the variable key is the fallback. |
+| `@prompt value` | Shows `Prompt text (VARIABLE_KEY)` in questions and summary; without a distinct prompt, shows only the key. |
 | `@description value` | Adds help text to the field. |
 | `@required` | Rejects an empty or whitespace-only final value. |
 | `@secret` | Masks input and redacts the value from summaries and diagnostics. |

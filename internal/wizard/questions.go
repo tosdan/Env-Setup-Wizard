@@ -74,10 +74,6 @@ func BuildQuestionGroups(document domain.Document) ([]domain.QuestionGroup, erro
 }
 
 func questionFromVariable(variable domain.Variable, section string) domain.Question {
-	prompt := variable.Annotations.Prompt
-	if prompt == "" {
-		prompt = variable.Key
-	}
 	variableType := variable.Annotations.Type
 	if variableType == "" {
 		variableType = domain.VariableTypeString
@@ -85,7 +81,7 @@ func questionFromVariable(variable domain.Variable, section string) domain.Quest
 
 	return domain.Question{
 		Key:                variable.Key,
-		Prompt:             prompt,
+		Prompt:             variableLabel(variable),
 		Description:        variable.Annotations.Description,
 		Value:              variable.Value,
 		HasValue:           variable.HasValue,

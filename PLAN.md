@@ -30,7 +30,7 @@ Il vocabolario della prima release è congelato alle seguenti nove annotation:
 
 | Annotation                           | Scopo                                                                                           |
 | ------------------------------------ | ----------------------------------------------------------------------------------------------- |
-| `@prompt valore`                     | Personalizza il testo della domanda. Fallback: nome della variabile.                            |
+| `@prompt valore`                     | Mostra `Prompt descrittivo (VARIABLE_KEY)` nella domanda e nel riepilogo. Se assente o uguale alla chiave, mostra solo la chiave. |
 | `@description valore`                | Aggiunge una descrizione al campo.                                                              |
 | `@required`                          | Rifiuta valori vuoti o composti solo da whitespace.                                             |
 | `@secret`                            | Usa input mascherato (`EchoModePassword`) e nasconde il valore nei summary e nella diagnostica. |

@@ -82,7 +82,7 @@ Annotations use comment lines of the form `# @name value`. Field annotations bin
 
 | Annotation | Contract |
 | --- | --- |
-| `@prompt value` | Question label; fallback is the variable key |
+| `@prompt value` | Descriptive question label followed by the variable key in parentheses; without a distinct prompt, show only the key |
 | `@description value` | Additional field help |
 | `@required` | Reject empty or whitespace-only final values |
 | `@secret` | Mask input and redact summary, logs, diagnostics, and errors |
@@ -145,8 +145,9 @@ options             -> Select
 ```
 
 Invalid input keeps the user on the current field. The summary is always shown
-and is grouped like the wizard. A variable with `@prompt` is labeled as
-`Prompt text (VARIABLE_KEY)`; otherwise only its key is shown. Normal values are
+and is grouped like the wizard. In both questions and summary, a variable with
+`@prompt` is labeled as `Prompt text (VARIABLE_KEY)`; if the prompt is absent or
+equals the key, only its key is shown. Normal values are
 visible; secret values appear only as `[set]` or `[not set]`.
 
 After rendering the candidate in memory, a byte-identical existing output terminates successfully without confirmation, backup, or write, including with `--force`. Otherwise creation asks `Create .env? [Y/n]` and overwrite asks `Overwrite existing .env? [y/N]` unless `--force` is present.

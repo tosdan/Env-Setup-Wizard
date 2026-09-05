@@ -26,7 +26,7 @@ func RenderSummary(document domain.Document) (string, error) {
 
 		width := 0
 		for _, variable := range group.variables {
-			label := summaryLabel(variable)
+			label := variableLabel(variable)
 			if len(label) > width {
 				width = len(label)
 			}
@@ -39,20 +39,12 @@ func RenderSummary(document domain.Document) (string, error) {
 				&summary,
 				"  %-*s  %s\n",
 				width,
-				summaryLabel(variable),
+				variableLabel(variable),
 				summaryValue(variable),
 			)
 		}
 	}
 	return summary.String(), nil
-}
-
-func summaryLabel(variable domain.Variable) string {
-	prompt := variable.Annotations.Prompt
-	if prompt == "" || prompt == variable.Key {
-		return variable.Key
-	}
-	return fmt.Sprintf("%s (%s)", prompt, variable.Key)
 }
 
 type summaryGroup struct {

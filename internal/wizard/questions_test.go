@@ -65,8 +65,8 @@ func TestBuildQuestionGroupsMapsAndMergesDocumentVariables(t *testing.T) {
 	}
 
 	port := groups[1].Questions[0]
-	if port.Prompt != "Database port" || port.Description != "Port exposed by the database" {
-		t.Errorf("DB_PORT labels = %#v, want annotation values", port)
+	if port.Prompt != "Database port (DB_PORT)" || port.Description != "Port exposed by the database" {
+		t.Errorf("DB_PORT labels = %#v, want descriptive prompt with variable key and original description", port)
 	}
 	if port.Type != domain.VariableTypePort || port.Kind != domain.QuestionKindInput || !port.Required || port.Placeholder != "5432" {
 		t.Errorf("DB_PORT semantics = %#v, want required port input with placeholder", port)
